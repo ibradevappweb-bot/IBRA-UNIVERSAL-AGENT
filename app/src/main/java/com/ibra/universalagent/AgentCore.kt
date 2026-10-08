@@ -23,7 +23,7 @@ class AgentCore(
         stateEngine.set(AgentState.PLANNING, decision.taskType)
         var context = AgentContext(clean, decision.taskType, decision.target, decision.parameters, memory = memoryEngine.recall())
         memoryEngine.remember(MemoryType.TASK, "current_task", decision.taskType.name, 3)
-        var agentPlan = plannerEngine.createPlan(decision)
+        var agentPlan = plannerEngine.createPlan(decision, context)
         if (agentPlan.requiresConfirmation) {
             stateEngine.set(AgentState.WAITING_CONFIRMATION, decision.taskType, message = "Confirmation requise.")
             memoryEngine.remember(MemoryType.OUTCOME, "last_outcome", "WAITING_CONFIRMATION", 3)
@@ -34,9 +34,9 @@ class AgentCore(
             attempt++
             context = context.withAttempt(attempt)
             stateEngine.set(AgentState.EXECUTING, decision.taskType, attempt)
-            val execution = actionEngine.execute(agentPlan)
+            val execution = actionEngine.execute(agentPlan, context)
             stateEngine.set(AgentState.OBSERVING, decision.taskType, attempt)
-            val observation = observationEngine.observe(execution)
+            val observation = observationEngine.observe(execution, context)
             stateEngine.set(AgentState.VERIFYING, decision.taskType, attempt)
             val verification = verificationEngine.verify(observation)
             if (verification.success) {
@@ -57,7 +57,7 @@ class AgentCore(
                 CorrectionStrategy.RETRY, CorrectionStrategy.RETRY_WITH_ADJUSTMENT, CorrectionStrategy.OBSERVE_AGAIN -> Unit
                 CorrectionStrategy.REPLAN -> {
                     val refreshedDecision = brainEngine.understand(clean)
-                    agentPlan = plannerEngine.createPlan(refreshedDecision)
+                    agentPlan = plannerEngine.createPlan(refreshedDecision, context)
                 }
                 CorrectionStrategy.ALTERNATIVE_ACTION, CorrectionStrategy.REQUEST_CLARIFICATION, CorrectionStrategy.REQUEST_CONFIRMATION, CorrectionStrategy.STOP_SAFELY -> return AgentResult(false, "Correction " + selected.strategy.name + " non exécutable automatiquement en toute sécurité.")
             }
