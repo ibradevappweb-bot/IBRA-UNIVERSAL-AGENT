@@ -10,12 +10,16 @@ class AgentCore(
     private val verificationEngine: VerificationEngine,
     private val correctionEngine: CorrectionEngine
 ) {
+    companion object {
+        private const val MAX_CORRECTION_ATTEMPTS = 3
+    }
+
     fun process(request: String): AgentResult {
         val clean = request.trim()
         if (clean.isEmpty()) return AgentResult(false, "Je n'ai pas reçu de demande.")
 
         val decision = brainEngine.understand(clean)
-        val agentPlan = plannerEngine.createPlan(decision)
+        var agentPlan = plannerEngine.createPlan(decision)
 
         if (agentPlan.requiresConfirmation) {
             return AgentResult(
@@ -24,27 +28,75 @@ class AgentCore(
             )
         }
 
-        val execution = actionEngine.execute(agentPlan)
-        val observation = observationEngine.observe(execution)
-        val verification = verificationEngine.verify(execution)
+        var attempt = 0
 
-        if (observation.state != ObservationState.COMPLETED || !verification.success) {
+        while (attempt < MAX_CORRECTION_ATTEMPTS) {
+            attempt++
+
+            val execution = actionEngine.execute(agentPlan)
+            val observation = observationEngine.observe(execution)
+            val verification = verificationEngine.verify(observation)
+
+            if (verification.success) {
+                return AgentResult(
+                    true,
+                    verification.message +
+                        " [" + decision.taskType +
+                        ", observation=" + observation.state +
+                        ", tentative=" + attempt + "]"
+                )
+            }
+
             val correction = correctionEngine.propose(observation, agentPlan)
             val selected = correction.selected
-            val message = if (selected != null) {
-                "Action non confirmée. Correction proposée : " +
-                    selected.strategy.name +
-                    ". " + selected.reason +
-                    " (" + correction.alternatives.size + " alternative(s) disponible(s))."
-            } else {
-                "Action non confirmée. Aucune correction sûre disponible."
+
+            if (selected == null ||
+                !correction.shouldContinue ||
+                selected.requiresUserInput ||
+                selected.requiresConfirmation ||
+                selected.strategy == CorrectionStrategy.STOP_SAFELY
+            ) {
+                return AgentResult(
+                    false,
+                    "Action non confirmée après " + attempt +
+                        " tentative(s). " +
+                        (selected?.reason ?: "Aucune correction sûre disponible.") +
+                        " [" + decision.taskType + "]"
+                )
             }
-            return AgentResult(false, message + " [" + decision.taskType + "]")
+
+            when (selected.strategy) {
+                CorrectionStrategy.RETRY,
+                CorrectionStrategy.RETRY_WITH_ADJUSTMENT -> {
+                    // Rejoue le plan sans prétendre que l'action précédente a réussi.
+                }
+
+                CorrectionStrategy.OBSERVE_AGAIN -> {
+                    // L'observation suivante est faite au début de la prochaine boucle.
+                }
+
+                CorrectionStrategy.REPLAN -> {
+                    val refreshedDecision = brainEngine.understand(clean)
+                    agentPlan = plannerEngine.createPlan(refreshedDecision)
+                }
+
+                CorrectionStrategy.ALTERNATIVE_ACTION,
+                CorrectionStrategy.REQUEST_CLARIFICATION,
+                CorrectionStrategy.REQUEST_CONFIRMATION,
+                CorrectionStrategy.STOP_SAFELY -> {
+                    return AgentResult(
+                        false,
+                        "Correction " + selected.strategy.name +
+                            " non exécutable automatiquement en toute sécurité."
+                    )
+                }
+            }
         }
 
         return AgentResult(
-            true,
-            observation.summary + " [" + decision.taskType + ", observation=" + observation.state + "]"
+            false,
+            "Échec confirmé après " + MAX_CORRECTION_ATTEMPTS +
+                " tentative(s). Arrêt sécurisé. [" + decision.taskType + "]"
         )
     }
 }
