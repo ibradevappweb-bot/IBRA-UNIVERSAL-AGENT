@@ -16,14 +16,17 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var textToSpeech: TextToSpeech
-    private val agentCore = AgentCore(
-        BrainEngine(),
-        PlannerEngine(),
-        ActionEngine(),
-        ObservationEngine(),
-        VerificationEngine(),
-        CorrectionEngine()
-    )
+
+    private val agentCore by lazy {
+        AgentCore(
+            brainEngine = BrainEngine(),
+            plannerEngine = PlannerEngine(),
+            actionEngine = ActionEngine(AndroidActionExecutor(this)),
+            observationEngine = ObservationEngine(),
+            verificationEngine = VerificationEngine(),
+            correctionEngine = CorrectionEngine()
+        )
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
