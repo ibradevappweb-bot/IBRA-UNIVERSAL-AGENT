@@ -21,7 +21,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         PlannerEngine(),
         ActionEngine(),
         ObservationEngine(),
-        VerificationEngine()
+        VerificationEngine(),
+        CorrectionEngine()
     )
 
     override fun onCreate(savedInstanceState: Bundle?) {
