@@ -16,7 +16,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var textToSpeech: TextToSpeech
-    private val agentCore = AgentCore(ActionEngine(), VerificationEngine())
+    private val agentCore = AgentCore(BrainEngine(), ActionEngine(), VerificationEngine())
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,7 +59,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (clean.isEmpty()) return
         binding.conversation.append("\n\nVous : $clean")
         val result = agentCore.process(clean)
-        binding.conversation.append("\nIBRA : ${result.message}")
+        binding.conversation.append("\nIBRA : " + result.message)
         textToSpeech.speak(result.message, TextToSpeech.QUEUE_FLUSH, null, "ibra-response")
         binding.textInput.text?.clear()
     }
