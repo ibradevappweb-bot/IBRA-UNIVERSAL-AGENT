@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IBRA Universal Agent</string>
+    <string name="agent_ready">Agent prêt.</string>
+    <string name="listen">Parler</string>
+    <string name="hint">Dis quelque chose à IBRA…</string>
+</resources>
