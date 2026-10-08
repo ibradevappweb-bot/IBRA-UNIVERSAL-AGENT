@@ -6,6 +6,7 @@ class AgentCore(
     private val brainEngine: BrainEngine,
     private val plannerEngine: PlannerEngine,
     private val actionEngine: ActionEngine,
+    private val observationEngine: ObservationEngine,
     private val verificationEngine: VerificationEngine
 ) {
     fun process(request: String): AgentResult {
@@ -23,11 +24,15 @@ class AgentCore(
         }
 
         val execution = actionEngine.execute(agentPlan)
+        val observation = observationEngine.observe(execution)
         val verification = verificationEngine.verify(execution)
 
+        val finalSuccess = verification.success &&
+            observation.state == ObservationState.COMPLETED
+
         return AgentResult(
-            verification.success,
-            verification.message + " [" + decision.taskType + "]"
+            finalSuccess,
+            observation.summary + " [" + decision.taskType + ", observation=" + observation.state + "]"
         )
     }
 }
