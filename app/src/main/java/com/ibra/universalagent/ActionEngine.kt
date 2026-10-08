@@ -11,41 +11,37 @@ data class ActionExecution(
     val contextMemoryKeys: List<String> = emptyList()
 )
 
-class ActionEngine {
+class ActionEngine(
+    private val executor: ActionExecutor = SimulatedActionExecutor()
+) {
     fun plan(agentPlan: AgentPlan): ActionPlan =
-        ActionPlan(
-            request = agentPlan.request,
-            actions = agentPlan.steps.map { it.action.name }
-        )
+        ActionPlan(agentPlan.request, agentPlan.steps.map { it.action.name })
 
     fun execute(agentPlan: AgentPlan, context: AgentContext): ActionExecution {
         val completed = mutableListOf<PlanStep>()
-        val contextInfo = contextMetadata(context)
-
         for (step in agentPlan.steps) {
             when (step.action) {
-                PlanAction.PREPARE,
-                PlanAction.RESPOND -> completed += step
-
-                PlanAction.OPEN_APP,
-                PlanAction.SEARCH,
-                PlanAction.NAVIGATE,
-                PlanAction.SEND_MESSAGE -> return ActionExecution(
-                    plan = plan(agentPlan),
-                    observedResult = "Action non connectée à Android : " + step.action,
-                    completedSteps = completed,
-                    failedStep = step,
-                    contextAttempt = context.attempt,
-                    contextFacts = context.facts,
-                    contextMemoryKeys = context.memory.map { it.key }
-                )
+                PlanAction.PREPARE, PlanAction.RESPOND -> completed += step
+                PlanAction.OPEN_APP, PlanAction.SEARCH, PlanAction.NAVIGATE, PlanAction.SEND_MESSAGE -> {
+                    val result = executor.execute(step)
+                    if (!result.success) return ActionExecution(
+                        plan(agentPlan), result.message, completed, step,
+                        context.attempt, context.facts, context.memory.map { it.key }
+                    )
+                    completed += step
+                    return ActionExecution(
+                        plan(agentPlan), result.message, completed,
+                        contextAttempt = context.attempt,
+                        contextFacts = context.facts,
+                        contextMemoryKeys = context.memory.map { it.key }
+                    )
+                }
             }
         }
-
         return ActionExecution(
-            plan = plan(agentPlan),
-            observedResult = "Plan exécuté par le moteur : " + agentPlan.request,
-            completedSteps = completed,
+            plan(agentPlan),
+            "Plan exécuté par le moteur : " + agentPlan.request,
+            completed,
             contextAttempt = context.attempt,
             contextFacts = context.facts,
             contextMemoryKeys = context.memory.map { it.key }
@@ -54,11 +50,4 @@ class ActionEngine {
 
     fun execute(agentPlan: AgentPlan): ActionExecution =
         execute(agentPlan, AgentContext(agentPlan.request, agentPlan.taskType))
-
-    private fun contextMetadata(context: AgentContext): Map<String, String> =
-        mapOf(
-            "attempt" to context.attempt.toString(),
-            "fact_count" to context.facts.size.toString(),
-            "memory_count" to context.memory.size.toString()
-        )
 }
