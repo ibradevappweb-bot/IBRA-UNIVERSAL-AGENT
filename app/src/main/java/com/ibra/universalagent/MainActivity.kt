@@ -16,6 +16,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var textToSpeech: TextToSpeech
+    private lateinit var geminiChatEngine: GeminiChatEngine
 
     private val agentCore by lazy {
         AgentCore(
@@ -32,6 +33,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        geminiChatEngine = GeminiChatEngine(this)
         textToSpeech = TextToSpeech(this, this)
         setupVoice()
         binding.sendButton.setOnClickListener { submit(binding.textInput.text.toString()) }
@@ -68,10 +70,42 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val clean = request.trim()
         if (clean.isEmpty()) return
         binding.conversation.append("\n\nVous : $clean")
-        val result = agentCore.process(clean)
-        binding.conversation.append("\nIBRA : " + result.message)
-        textToSpeech.speak(result.message, TextToSpeech.QUEUE_FLUSH, null, "ibra-response")
         binding.textInput.text?.clear()
+
+        val decision = BrainEngine().understand(clean)
+        if (decision.taskType == TaskType.CHAT) {
+            if (!geminiChatEngine.hasApiKey()) showGeminiKeyDialog(clean) else askGemini(clean)
+            return
+        }
+
+        showResponse(agentCore.process(clean).message)
+    }
+
+    private fun askGemini(request: String) {
+        binding.status.text = "IBRA réfléchit…"
+        geminiChatEngine.ask(request) { answer -> runOnUiThread { showResponse(answer) } }
+    }
+
+    private fun showResponse(message: String) {
+        binding.conversation.append("\nIBRA : $message")
+        textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "ibra-response")
+        binding.status.text = "Prêt"
+    }
+
+    private fun showGeminiKeyDialog(request: String) {
+        val input = EditText(this).apply {
+            hint = "Colle ta clé API Gemini"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Activer le cerveau IA d'IBRA")
+            .setMessage("IBRA a besoin d'une clé API Gemini pour répondre aux questions normales. Elle reste enregistrée sur ce téléphone.")
+            .setView(input)
+            .setNegativeButton("Plus tard", null)
+            .setPositiveButton("Enregistrer") { _, _ ->
+                val key = input.text.toString().trim()
+                if (key.isNotEmpty()) { geminiChatEngine.saveApiKey(key); askGemini(request) }
+            }.show()
     }
 
     override fun onInit(status: Int) {
