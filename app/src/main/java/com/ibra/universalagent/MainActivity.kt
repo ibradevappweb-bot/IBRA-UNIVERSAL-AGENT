@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         BrainEngine(),
         PlannerEngine(),
         ActionEngine(),
+        ObservationEngine(),
         VerificationEngine()
     )
 
