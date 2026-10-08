@@ -28,13 +28,19 @@ data class Observation(
 )
 
 class ObservationEngine {
-    fun observe(execution: ActionExecution): Observation {
+    fun observe(execution: ActionExecution, context: AgentContext): Observation {
+        val contextDetails = mapOf(
+            "attempt" to context.attempt.toString(),
+            "fact_count" to context.facts.size.toString(),
+            "memory_count" to context.memory.size.toString()
+        )
+
         if (execution.failedStep != null) {
             return Observation(
                 state = ObservationState.FAILED,
                 source = ObservationSource.ACTION_ENGINE,
                 summary = execution.observedResult,
-                details = mapOf(
+                details = contextDetails + mapOf(
                     "failure_action" to execution.failedStep.action.name,
                     "request" to execution.plan.request
                 ),
@@ -49,7 +55,7 @@ class ObservationEngine {
                 state = ObservationState.UNKNOWN,
                 source = ObservationSource.ACTION_ENGINE,
                 summary = "Aucun résultat observable.",
-                details = mapOf("request" to execution.plan.request),
+                details = contextDetails + mapOf("request" to execution.plan.request),
                 completedSteps = execution.completedSteps,
                 confidence = 0.0
             )
@@ -59,7 +65,7 @@ class ObservationEngine {
             state = ObservationState.COMPLETED,
             source = ObservationSource.ACTION_ENGINE,
             summary = execution.observedResult,
-            details = mapOf(
+            details = contextDetails + mapOf(
                 "request" to execution.plan.request,
                 "completed_step_count" to execution.completedSteps.size.toString()
             ),
@@ -67,6 +73,9 @@ class ObservationEngine {
             confidence = 0.90
         )
     }
+
+    fun observe(execution: ActionExecution): Observation =
+        observe(execution, AgentContext(execution.plan.request))
 
     fun observeAndroidState(
         source: ObservationSource,
