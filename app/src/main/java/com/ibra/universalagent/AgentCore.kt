@@ -7,7 +7,8 @@ class AgentCore(
     private val plannerEngine: PlannerEngine,
     private val actionEngine: ActionEngine,
     private val observationEngine: ObservationEngine,
-    private val verificationEngine: VerificationEngine
+    private val verificationEngine: VerificationEngine,
+    private val correctionEngine: CorrectionEngine
 ) {
     fun process(request: String): AgentResult {
         val clean = request.trim()
@@ -27,11 +28,22 @@ class AgentCore(
         val observation = observationEngine.observe(execution)
         val verification = verificationEngine.verify(execution)
 
-        val finalSuccess = verification.success &&
-            observation.state == ObservationState.COMPLETED
+        if (observation.state != ObservationState.COMPLETED || !verification.success) {
+            val correction = correctionEngine.propose(observation, agentPlan)
+            val selected = correction.selected
+            val message = if (selected != null) {
+                "Action non confirmée. Correction proposée : " +
+                    selected.strategy.name +
+                    ". " + selected.reason +
+                    " (" + correction.alternatives.size + " alternative(s) disponible(s))."
+            } else {
+                "Action non confirmée. Aucune correction sûre disponible."
+            }
+            return AgentResult(false, message + " [" + decision.taskType + "]")
+        }
 
         return AgentResult(
-            finalSuccess,
+            true,
             observation.summary + " [" + decision.taskType + ", observation=" + observation.state + "]"
         )
     }
