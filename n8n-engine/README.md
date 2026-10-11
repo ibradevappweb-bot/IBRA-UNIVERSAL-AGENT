@@ -59,3 +59,21 @@ Do not put keys in source files, commit them, or send them in chat. Gemini is re
 A proposal is **not automatically installed** in the live engine. It is saved with status `READY_FOR_REVIEW` only if every candidate test passes and the TUTEUR approves it; otherwise it is `REJECTED`. This first version deliberately does not rewrite the engine, commit to GitHub, merge branches, or promote generated code. That restriction protects the existing Android application and avoids treating a model's approval as proof of safety.
 
 The GitHub Actions test workflow validates the Python code and deterministic mock-based cycle tests. It does not prove that external Gemini/Exa credentials work, nor that the 48-hour n8n schedule is installed or active. The n8n JSON is an import template; replace its placeholder path with the actual Python path on the n8n host, configure credentials securely, test a manual run, then activate the schedule. Do not expose the local engine on the public Internet without authentication and a stronger sandbox.
+
+
+## Trigger the cycle from n8n
+
+The local API wrapper is `evolution_service.py`. Start it in the same Python environment/host as n8n:
+
+```sh
+export GEMINI_API_KEY='set-this-securely-in-your-shell-or-service-manager'
+# Optional real web research:
+export EXA_API_KEY='set-this-securely-if-available'
+python evolution_service.py
+```
+
+It binds to `127.0.0.1:8767` by default. Check `GET http://127.0.0.1:8767/health`; `GET /status` shows the recorded cycles; `POST /run` runs one cycle. The API only listens on loopback by default. Do not set `IBRA_EVOLUTION_HOST` to a public interface; non-loopback binding requires `IBRA_EVOLUTION_TOKEN` but should still be protected by a firewall and TLS reverse proxy.
+
+Import `IBRA-Evolution-48h.n8n.json` into n8n. It has a manual trigger and a 48-hour Schedule Trigger, both calling the local API. Keep the workflow inactive until you have started the service and verified a manual run. Activate it only after the credentials and actual response have been checked. The workflow is a template in GitHub, not yet imported or activated in your running n8n instance.
+
+Important: the current cycle creates a reviewed proposal; it does not install or promote generated code. External Gemini/Exa calls have not been verified without your configured credentials.
