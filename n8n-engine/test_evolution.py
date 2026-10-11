@@ -104,14 +104,16 @@ class EvolutionTests(unittest.TestCase):
                 evolution.ask_gemini("test")
 
     def test_run_cycle_installs_approved_tool_into_versioned_catalog(self):
+        svg = '<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"><rect width="512" height="512" fill="#14213d"/><circle cx="256" cy="256" r="90" fill="#fca311"/></svg>'
         candidate = {
-            "name": "add_values",
-            "summary": "Add two values",
-            "code": "def run(data):\n    return data['a'] + data['b']\n",
+            "name": "image_svg_creator",
+            "summary": "Create a local vector image",
+            "code": "def run(data):\n    return " + repr(svg) + "\n",
+            "capabilities": ["file.write"],
             "tests": [
-                {"input": {"a": 2, "b": 3}, "expected": 5},
-                {"input": {"a": 1, "b": 1}, "expected": 2},
-                {"input": {"a": 0, "b": 0}, "expected": 0},
+                {"input": {"subject": "sunset"}, "expected": svg},
+                {"input": {"subject": "moon"}, "expected": svg},
+                {"input": {"subject": "mountain"}, "expected": svg},
             ],
         }
         with tempfile.TemporaryDirectory() as directory:
@@ -123,7 +125,7 @@ class EvolutionTests(unittest.TestCase):
                  patch.object(evolution, "research", return_value=[]), \
                  patch.object(evolution, "ask_gemini", side_effect=[
                      candidate,
-                     {"approved": True, "reasons": ["tests passed"], "risks": []},
+                     {"approved": True, "reasons": ["tests passed"], "risks": [], "capabilities": ["file.write"]},
                  ]):
                 record = evolution.run_cycle()
                 self.assertEqual(record["status"], "INSTALLED")
@@ -133,9 +135,10 @@ class EvolutionTests(unittest.TestCase):
                 saved_state = evolution.json.loads(
                     (base / "data" / "state.json").read_text(encoding="utf-8"))
                 self.assertEqual(len(saved_state["cycles"]), 1)
-                self.assertEqual(saved_state["completed"], ["json-validator"])
-                installed = evolution.tool_catalog.run_tool("add_values", {"a": 7, "b": 2})
-                self.assertEqual(installed["result"], 9)
+                self.assertEqual(saved_state["completed"], ["local-svg-image-creator"])
+                installed = evolution.tool_catalog.run_tool("image_svg_creator", {"subject": "test"})
+                self.assertEqual(installed["result"], svg)
+                self.assertEqual(installed["capabilities"], ["file.write"])
 
 
 if __name__ == "__main__":
