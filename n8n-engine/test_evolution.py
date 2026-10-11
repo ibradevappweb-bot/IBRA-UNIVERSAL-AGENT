@@ -98,7 +98,7 @@ class EvolutionTests(unittest.TestCase):
             with patch.object(evolution, "DATA_DIR", base / "data"), \
                  patch.object(evolution, "STATE_PATH", base / "data" / "state.json"), \
                  patch.object(evolution, "PROPOSALS_DIR", base / "data" / "proposals"), \
-                 patch.object(evolution.tool_catalog, "ROOT", base / "catalog"), \\
+                 patch.object(evolution.tool_catalog, "ROOT", base / "catalog"), \
                  patch.object(evolution, "research", return_value=[]), \
                  patch.object(evolution, "ask_gemini", side_effect=[
                      candidate,
