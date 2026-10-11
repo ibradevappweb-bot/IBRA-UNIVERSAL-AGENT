@@ -57,3 +57,26 @@ Le domaine doit être vérifié par l'administrateur. L'allowlist ne remplace pa
 - Les actions externes sont invoquées par l'orchestrateur de confiance, pas directement par du code généré.
 - La revue TUTEUR reste une évaluation de modèle et non une preuve formelle.
 - Le service est prévu pour localhost ; ne le publie pas sur Internet.
+
+
+## Création et utilisation d'images SVG locales
+
+L'évolution inclut désormais un objectif prioritaire `local-svg-image-creator`. Il demande au modèle de proposer un outil déterministe qui retourne une illustration vectorielle SVG auto-contenue, puis les tests et le TUTEUR doivent l'approuver avant installation.
+
+Le service d'évolution expose `POST /use-tool` pour exécuter une version active du catalogue. Pour enregistrer le résultat comme image, le corps doit inclure `name`, `data` et `save_as`. Exemple de corps JSON :
+
+    {
+      "name": "nom_reel_de_l_outil_installe",
+      "data": {
+        "subject": "un coucher de soleil sur la mer",
+        "title": "Coucher de soleil",
+        "background": "#14213d",
+        "accent": "#fca311",
+        "style": "flat"
+      },
+      "save_as": "images/coucher-soleil.svg"
+    }
+
+Le nom de l'outil doit correspondre à celui effectivement installé dans le catalogue. L'enregistrement nécessite la permission `file.write`; le service valide le XML/SVG et refuse scripts, événements, éléments non autorisés et ressources externes. Le fichier est écrit dans l'espace de travail du broker, pas dans la galerie Android automatiquement.
+
+**Limite importante :** ce premier outil produit une illustration vectorielle locale (SVG), pas une image photoréaliste générée par un modèle de diffusion. Il n'envoie pas la photo ou le prompt à un fournisseur d'images. L'objectif d'évolution n'est qu'une demande de création : l'outil n'existe pas tant qu'un cycle réel n'a pas réussi les tests, reçu l'approbation TUTEUR et été installé.
