@@ -34,8 +34,74 @@ def safe_range(*args):
     return result
 
 
-CALLS = {"abs": abs, "min": min, "max": max, "round": round, "len": len,
-         "sum": sum, "range": safe_range}
+def _require_text(value, function_name):
+    if not isinstance(value, str):
+        raise ValueError(function_name + " attend du texte.")
+    if len(value) > MAX_INPUT_JSON_BYTES:
+        raise ValueError("Texte trop long.")
+    return value
+
+
+def safe_replace(text, old, new):
+    text = _require_text(text, "replace")
+    old = _require_text(old, "replace")
+    new = _require_text(new, "replace")
+    result = text.replace(old, new)
+    if len(result.encode("utf-8")) > MAX_INPUT_JSON_BYTES:
+        raise ValueError("Texte résultant trop volumineux.")
+    return result
+
+
+def safe_split(text, separator=None):
+    text = _require_text(text, "split")
+    if separator is not None:
+        separator = _require_text(separator, "split")
+        if separator == "":
+            raise ValueError("Le séparateur de split ne peut pas être vide.")
+    result = text.split(separator)
+    if len(result) > MAX_RANGE_ITEMS:
+        raise ValueError("split produit plus de 1000 éléments.")
+    return result
+
+
+def safe_join(separator, values):
+    separator = _require_text(separator, "join")
+    if not isinstance(values, (list, tuple)) or len(values) > MAX_RANGE_ITEMS:
+        raise ValueError("join attend une liste/tuple de 1000 éléments maximum.")
+    if any(not isinstance(value, str) for value in values):
+        raise ValueError("join n'accepte que des textes.")
+    result = separator.join(values)
+    if len(result.encode("utf-8")) > MAX_INPUT_JSON_BYTES:
+        raise ValueError("Texte résultant trop volumineux.")
+    return result
+
+
+def safe_sorted(values):
+    if not isinstance(values, (list, tuple, str)) or len(values) > MAX_RANGE_ITEMS:
+        raise ValueError("sorted attend une collection de 1000 éléments maximum.")
+    return sorted(values)
+
+
+def safe_all(values):
+    if not isinstance(values, (list, tuple, str, dict, range)) or len(values) > MAX_RANGE_ITEMS:
+        raise ValueError("all attend une collection bornée de 1000 éléments maximum.")
+    return all(values)
+
+
+def safe_any(values):
+    if not isinstance(values, (list, tuple, str, dict, range)) or len(values) > MAX_RANGE_ITEMS:
+        raise ValueError("any attend une collection bornée de 1000 éléments maximum.")
+    return any(values)
+
+
+CALLS = {
+    "abs": abs, "min": min, "max": max, "round": round, "len": len,
+    "sum": sum, "range": safe_range, "lower": lambda value: _require_text(value, "lower").lower(),
+    "upper": lambda value: _require_text(value, "upper").upper(),
+    "strip": lambda value: _require_text(value, "strip").strip(),
+    "replace": safe_replace, "split": safe_split, "join": safe_join,
+    "sorted": safe_sorted, "all": safe_all, "any": safe_any
+}
 BINOPS = {ast.Add: lambda a,b:a+b, ast.Sub:lambda a,b:a-b, ast.Mult:lambda a,b:a*b,
           ast.Div:lambda a,b:a/b, ast.FloorDiv:lambda a,b:a//b, ast.Mod:lambda a,b:a%b,
           ast.Pow:lambda a,b:a**b}
