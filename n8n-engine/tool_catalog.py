@@ -54,6 +54,15 @@ def tool_dir(name):
     return ROOT / validate_name(name)
 
 
+def mutation_auth_result(token, authorization):
+    """Require an explicit secret for every HTTP mutation; never trust a caller-supplied review alone."""
+    if not token:
+        return False, 503, "IBRA_CATALOG_TOKEN_REQUIRED"
+    if authorization != "Bearer " + token:
+        return False, 401, "UNAUTHORIZED"
+    return True, 200, "OK"
+
+
 def run_tests(code, cases):
     if not isinstance(cases, list) or not 3 <= len(cases) <= 20:
         raise CatalogError("Fournir entre 3 et 20 tests indépendants.")
@@ -213,8 +222,10 @@ class Handler(BaseHTTPRequestHandler):
         return self.send_json(404, {"ok": False, "error": "NOT_FOUND"})
 
     def do_POST(self):
-        if not self.authorized():
-            return self.send_json(401, {"ok": False, "error": "UNAUTHORIZED"})
+        allowed, status, error = mutation_auth_result(
+            TOKEN, self.headers.get("Authorization", ""))
+        if not allowed:
+            return self.send_json(status, {"ok": False, "error": error})
         try:
             body = self.body()
             route = urlparse(self.path).path
