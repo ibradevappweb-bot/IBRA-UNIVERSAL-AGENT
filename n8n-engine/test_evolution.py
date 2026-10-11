@@ -30,6 +30,20 @@ class EvolutionTests(unittest.TestCase):
     def test_empty_backlog_returns_none(self):
         self.assertIsNone(evolution.choose_goal([], set()))
 
+    def test_new_default_goals_are_added_to_existing_backlog(self):
+        merged = evolution.merge_backlog(
+            [{"id": "legacy-goal", "priority": 1, "title": "Legacy"}],
+            set()
+        )
+        identifiers = [goal["id"] for goal in merged]
+        self.assertIn("legacy-goal", identifiers)
+        self.assertIn("local-svg-image-creator", identifiers)
+        self.assertEqual(len(identifiers), len(set(identifiers)))
+
+    def test_completed_default_goals_are_not_readded(self):
+        merged = evolution.merge_backlog([], {"local-svg-image-creator"})
+        self.assertNotIn("local-svg-image-creator", [goal["id"] for goal in merged])
+
     def test_valid_candidate_runs_real_tests(self):
         candidate = {
             "name": "add_values",
