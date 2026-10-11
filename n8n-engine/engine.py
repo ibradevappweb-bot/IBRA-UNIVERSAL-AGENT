@@ -75,7 +75,7 @@ def parse_code(code):
                ast.IfExp, ast.Call, ast.Subscript, ast.Add, ast.Sub, ast.Mult, ast.Div,
                ast.FloorDiv, ast.Mod, ast.Pow, ast.USub, ast.UAdd, ast.Not, ast.And,
                ast.Or, ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.In,
-               ast.NotIn, ast.keyword, ast.Slice, ast.For)
+               ast.NotIn, ast.keyword, ast.Slice, ast.For, ast.ListComp, ast.comprehension)
     for node in ast.walk(tree):
         if not isinstance(node, allowed):
             raise ValueError("Élément Python non autorisé : " + type(node).__name__)
@@ -99,6 +99,25 @@ def eval_expr(node, env):
         return tuple(eval_expr(x, env) for x in node.elts)
     if isinstance(node, ast.Dict):
         return {eval_expr(k, env): eval_expr(v, env) for k, v in zip(node.keys, node.values)}
+    if isinstance(node, ast.ListComp):
+        if len(node.generators) != 1:
+            raise ValueError("Une compréhension de liste doit avoir un seul for.")
+        generator = node.generators[0]
+        if generator.is_async or not isinstance(generator.target, ast.Name):
+            raise ValueError("Cible de compréhension non prise en charge.")
+        iterable = eval_expr(generator.iter, env)
+        if not isinstance(iterable, (list, tuple, str, dict, range)):
+            raise ValueError("La compréhension doit parcourir une collection bornée.")
+        if len(iterable) > MAX_RANGE_ITEMS:
+            raise ValueError("La compréhension dépasse 1000 éléments.")
+        result = []
+        for item in iterable:
+            env[generator.target.id] = item
+            if all(eval_expr(condition, env) for condition in generator.ifs):
+                result.append(eval_expr(node.elt, env))
+                if len(result) > MAX_RANGE_ITEMS:
+                    raise ValueError("Résultat de compréhension limité à 1000 éléments.")
+        return result
     if isinstance(node, ast.Subscript):
         return eval_expr(node.value, env)[eval_expr(node.slice, env)]
     if isinstance(node, ast.Slice):
