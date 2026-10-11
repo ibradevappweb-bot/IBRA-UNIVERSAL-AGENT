@@ -10,7 +10,6 @@ import ipaddress
 import json
 import os
 import re
-import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -29,7 +28,7 @@ MAX_BYTES = 300_000
 MAX_ROWS = 5_000
 MAX_COLUMNS = 200
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,47}$")
-CAPABILITY_RE = re.compile(r"^(file\\.(read|write)|data\\.(json|csv)|connector:[a-z][a-z0-9_]{1,47})$")
+CAPABILITY_RE = re.compile(r"^(file\.(read|write)|data\.(json|csv)|connector:[a-z][a-z0-9_]{1,47})$")
 
 
 class CapabilityError(ValueError):
