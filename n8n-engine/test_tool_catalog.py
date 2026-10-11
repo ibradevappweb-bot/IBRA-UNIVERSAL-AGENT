@@ -37,6 +37,30 @@ class CatalogTests(unittest.TestCase):
         self.assertEqual(result["version"], 1)
         self.assertEqual(catalog.run_tool("double_value", {"value": 5})["result"], 10)
 
+
+    def test_capabilities_are_saved_and_returned(self):
+        review = {
+            "approved": True, "reasons": ["reviewed"], "risks": [],
+            "capabilities": ["file.read"],
+        }
+        result = catalog.install_tool("read_helper", VALID_CODE, VALID_TESTS,
+                                      review, ["file.read"])
+        self.assertEqual(result["active_version"], 1)
+        self.assertEqual(catalog.list_tools()[0]["capabilities"], ["file.read"])
+        run = catalog.run_tool("read_helper", {"value": 4})
+        self.assertEqual(run["capabilities"], ["file.read"])
+        self.assertEqual(run["result"], 8)
+
+    def test_rejects_permission_review_mismatch(self):
+        review = {
+            "approved": True, "reasons": ["reviewed"], "risks": [],
+            "capabilities": [],
+        }
+        with self.assertRaisesRegex(catalog.CatalogError, "permissions demandées"):
+            catalog.install_tool("read_helper", VALID_CODE, VALID_TESTS,
+                                 review, ["file.read"])
+        self.assertEqual(catalog.list_tools(), [])
+
     def test_rejects_unapproved_tuteur(self):
         review = {"approved": False, "reasons": ["Risque"], "risks": ["Non sûr"]}
         with self.assertRaises(catalog.CatalogError):
