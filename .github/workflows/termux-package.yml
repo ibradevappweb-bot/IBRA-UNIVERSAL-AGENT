@@ -1,0 +1,52 @@
+name: Termux Evolution Package
+
+on:
+  push:
+    branches: [ agent-control-bridge ]
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout bridge branch
+        uses: actions/checkout@v4
+      - name: Package Termux engine
+        run: |
+          mkdir -p dist/ibra-evolution-termux
+          cp n8n-engine/*.py dist/ibra-evolution-termux/
+          cp n8n-engine/*.md dist/ibra-evolution-termux/
+          cp n8n-engine/IBRA-Evolution-48h.n8n.json dist/ibra-evolution-termux/
+          cat > dist/ibra-evolution-termux/INSTALL_TERMUX.sh <<'SH'
+          #!/data/data/com.termux/files/usr/bin/bash
+          set -eu
+          echo "IBRA Evolution - installation Termux"
+          pkg update -y
+          pkg install -y python
+          python -m unittest -v
+          echo
+          echo "Tests terminés. Pour lancer le service :"
+          echo "  export GEMINI_API_KEY (saisie masquée recommandée)"
+          echo "  python evolution_service.py"
+          echo "Le service écoute sur 127.0.0.1:8767."
+          SH
+          chmod +x dist/ibra-evolution-termux/INSTALL_TERMUX.sh
+          cat > dist/ibra-evolution-termux/LISEZ-MOI-AVANT.txt <<'TXT'
+          Ce paquet contient le moteur Python IBRA Evolution, pas l'APK Android.
+          Installation: extraire ce ZIP dans Termux, entrer dans le dossier, puis exécuter:
+            bash INSTALL_TERMUX.sh
+          Les tests doivent passer avant de configurer GEMINI_API_KEY.
+          La clé Gemini ne doit jamais être écrite dans un fichier ou envoyée dans un message.
+          Pour lancer le service, saisir la clé dans le shell courant puis lancer:
+            python evolution_service.py
+          Le service local est sur 127.0.0.1:8767.
+          Le pont Android ne peut parler au service que lorsque ce service tourne sur le même téléphone.
+          TXT
+          cd dist
+          zip -qr ibra-evolution-termux.zip ibra-evolution-termux
+      - name: Upload Termux ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibra-evolution-termux
+          path: dist/ibra-evolution-termux.zip
+          retention-days: 90
