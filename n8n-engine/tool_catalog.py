@@ -97,8 +97,15 @@ def list_tools():
             continue
         try:
             manifest = load_json(manifest_path)
-            result.append({key: manifest.get(key) for key in
-                           ("name", "active_version", "versions", "updated_at")})
+            item = {key: manifest.get(key) for key in
+                    ("name", "active_version", "versions", "updated_at")}
+            active = manifest.get("active_version")
+            if type(active) is int:
+                active_record = load_json(folder / ("v" + str(active) + ".json"))
+                item["capabilities"] = active_record.get("capabilities", [])
+            else:
+                item["capabilities"] = []
+            result.append(item)
         except CatalogError:
             result.append({"name": folder.name, "status": "CORRUPTED"})
     return result
@@ -173,7 +180,8 @@ def run_tool(name, data):
     record = load_json(tool_dir(name) / ("v" + str(version) + ".json"))
     result = engine.execute_code(record["code"], data)
     json.dumps(result, ensure_ascii=False, allow_nan=False)
-    return {"ok": True, "name": name, "version": version, "result": result}
+    return {"ok": True, "name": name, "version": version,
+            "capabilities": record.get("capabilities", []), "result": result}
 
 
 def rollback_tool(name):
@@ -189,6 +197,8 @@ def rollback_tool(name):
     # Vérifie que la cible existe et contient du code interprétable avant activation.
     record = load_json(folder / ("v" + str(previous) + ".json"))
     engine.parse_code(record.get("code"))
+    import capability_broker
+    capability_broker.validate_capabilities(record.get("capabilities", []))
     manifest["active_version"] = previous
     manifest["updated_at"] = now()
     safe_json(folder / "manifest.json", manifest)
