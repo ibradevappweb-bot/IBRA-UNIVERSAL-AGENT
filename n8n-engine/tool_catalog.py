@@ -253,7 +253,8 @@ class Handler(BaseHTTPRequestHandler):
             route = urlparse(self.path).path
             if route == "/install":
                 result = install_tool(body.get("name"), body.get("code"),
-                                      body.get("tests"), body.get("tuteur_review"))
+                                      body.get("tests"), body.get("tuteur_review"),
+                                      body.get("capabilities", []))
                 return self.send_json(201, result)
             if route == "/run":
                 if "data" not in body:
