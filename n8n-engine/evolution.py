@@ -37,7 +37,7 @@ def choose_goal(goals, completed):
     if not pending:
         return None
     pending.sort(key=lambda item: (-int(item.get("priority", 0)), str(item.get("id", ""))))
-    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{1,60}", str(pending[0].get("id", ""))):
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,60}", str(pending[0].get("id", ""))):
         raise EvolutionError("Invalid goal identifier")
     return pending[0]
 
@@ -206,7 +206,7 @@ def run_cycle():
     state["completed"] = sorted(completed)
     state.setdefault("cycles", []).append({
         "cycle_id": cycle_id, "goal_id": goal["id"], "status": status,
-        "proposal_file": str(target.relative_to(ROOT))
+        "proposal_file": str(target.relative_to(DATA_DIR.parent))
     })
     state["cycles"] = state["cycles"][-100:]
     state["last_cycle_utc"] = now
