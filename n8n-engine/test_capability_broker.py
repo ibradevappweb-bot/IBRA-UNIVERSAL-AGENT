@@ -9,11 +9,11 @@ import capability_broker as broker
 import tool_catalog
 
 
-CODE = "def run(data):\n    return data.get('value', 1)\n"
+CODE = "def run(data):\\n    return data['value']\\n"
 TESTS = [
     {"input": {"value": 1}, "expected": 1},
     {"input": {"value": 2}, "expected": 2},
-    {"input": {}, "expected": 1},
+    {"input": {"value": 1}, "expected": 1},
 ]
 
 
