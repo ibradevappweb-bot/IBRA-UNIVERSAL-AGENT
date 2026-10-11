@@ -1,4 +1,4 @@
-"""Autonomous proposal cycle for IBRA. No live code is promoted automatically.
+"""Autonomous tool-building cycle for IBRA with reviewed catalog installation.
 
 Required environment: GEMINI_API_KEY. Optional: EXA_API_KEY.
 Generated code is only interpreted by engine.py's restricted AST evaluator.
@@ -12,6 +12,7 @@ import urllib.request
 from pathlib import Path
 
 import engine
+import tool_catalog
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "evolution-data"
@@ -187,13 +188,29 @@ def run_cycle():
     tuteur = review_candidate(goal, tested, sources)
     now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     cycle_id = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
-    status = "READY_FOR_REVIEW" if tuteur["approved"] else "REJECTED"
+    installation = None
+    installation_error = None
+    if tuteur["approved"] and tested["all_tests_passed"]:
+        try:
+            # Re-run the tests at the catalogue boundary; keep previous versions for rollback.
+            installation = tool_catalog.install_tool(
+                tested["name"], tested["code"], candidate["tests"], tuteur)
+            status = "INSTALLED"
+            completed.add(goal["id"])
+        except Exception as exc:
+            status = "INSTALLATION_FAILED"
+            installation_error = type(exc).__name__ + ": " + str(exc)
+    else:
+        status = "REJECTED"
+
     record = {
         "cycle_id": cycle_id, "created_at_utc": now, "goal": goal,
         "research_sources": sources, "proposal": tested, "tuteur": tuteur,
+        "catalog_installation": installation,
+        "installation_error": installation_error,
         "status": status,
-        "promotion": "NOT_PROMOTED",
-        "note": "Passing tests and TUTEUR review do not install the proposal into the live engine."
+        "promotion": "INSTALLED_IN_VERSIONED_CATALOG" if installation else "NOT_INSTALLED",
+        "note": "Only restricted-AST tools with passing tests and an approving TUTEUR review are installed. The engine source and Android app are never rewritten."
     }
     target = PROPOSALS_DIR / (cycle_id + ".json")
     # Atomic write prevents a partial audit record on interruption.
