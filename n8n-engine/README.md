@@ -108,3 +108,8 @@ Routes POST du broker : /file/read, /file/write, /data/json, /data/csv, /connect
 ### Limites de sécurité
 
 Les connecteurs ne sont utilisables que lorsqu'ils sont explicitement configurés ; aucune URL arbitraire n'est acceptée et les redirections HTTP sont bloquées. Le DNS et la destination d'un domaine configuré restent une responsabilité de l'administrateur réseau. Le système TUTEUR reste une revue de modèle, pas une preuve formelle. Protéger les services localement, utiliser des secrets forts et inspecter les permissions avant une installation réelle.
+
+
+### Création d'images locales
+
+Le backlog d'évolution inclut `local-svg-image-creator`, un objectif qui demande à Gemini de créer un outil SVG local. L'outil doit passer les tests et la revue TUTEUR avant installation. Le point d'entrée `POST /use-tool` permet ensuite d'utiliser un outil actif et, avec la permission `file.write`, de sauvegarder un SVG validé dans l'espace de travail. Cette capacité initiale produit des illustrations vectorielles SVG, pas des images photoréalistes de diffusion. Voir `CAPABILITIES.md`.
