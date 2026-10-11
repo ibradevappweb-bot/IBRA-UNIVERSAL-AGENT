@@ -10,6 +10,7 @@ import ipaddress
 import json
 import os
 import re
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -117,12 +118,18 @@ def write_file(tool_name, relative_path, content):
     if len(raw) > MAX_BYTES:
         raise CapabilityError("Fichier trop volumineux (300 Ko maximum).")
     target = safe_path(relative_path, for_write=True)
-    temp = target.with_name(target.name + ".ibra-tmp")
+    temp = None
     try:
-        temp.write_bytes(raw)
+        # NamedTemporaryFile crée un nom imprévisible avec création exclusive ;
+        # un fichier/lien préexistant ne peut donc pas détourner l'écriture.
+        with tempfile.NamedTemporaryFile(
+                mode="wb", dir=str(target.parent), prefix=".ibra-", suffix=".tmp",
+                delete=False) as handle:
+            temp = Path(handle.name)
+            handle.write(raw)
         temp.replace(target)
     finally:
-        if temp.exists():
+        if temp is not None and temp.exists():
             temp.unlink()
     return {"path": relative_path, "bytes_written": len(raw)}
 
