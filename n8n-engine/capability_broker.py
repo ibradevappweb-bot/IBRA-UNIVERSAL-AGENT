@@ -359,11 +359,15 @@ class Handler(BaseHTTPRequestHandler):
             elif route == "/file/write":
                 result = write_file(tool, body.get("path"), body.get("content"))
             elif route == "/data/json":
-                result = transform_json(tool, body.get("data"), body.get("operation"),
+                if "data" not in body or not isinstance(body.get("operation"), str):
+                    raise CapabilityError("data et operation sont obligatoires pour /data/json.")
+                result = transform_json(tool, body["data"], body["operation"],
                                         body.get("fields"), body.get("mapping"),
                                         body.get("key"), body.get("equals"))
             elif route == "/data/csv":
-                result = transform_csv(tool, body.get("csv"), body.get("select"),
+                if not isinstance(body.get("csv"), str):
+                    raise CapabilityError("csv est obligatoire pour /data/csv.")
+                result = transform_csv(tool, body["csv"], body.get("select"),
                                        body.get("rename"), body.get("filter_column"),
                                        body.get("equals"))
             elif route == "/connector/request":
