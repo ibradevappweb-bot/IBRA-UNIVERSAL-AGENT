@@ -82,7 +82,7 @@ class EvolutionTests(unittest.TestCase):
             with self.assertRaisesRegex(evolution.EvolutionError, "GEMINI_API_KEY"):
                 evolution.ask_gemini("test")
 
-    def test_run_cycle_records_proposal_without_promoting(self):
+    def test_run_cycle_installs_approved_tool_into_versioned_catalog(self):
         candidate = {
             "name": "add_values",
             "summary": "Add two values",
@@ -98,19 +98,23 @@ class EvolutionTests(unittest.TestCase):
             with patch.object(evolution, "DATA_DIR", base / "data"), \
                  patch.object(evolution, "STATE_PATH", base / "data" / "state.json"), \
                  patch.object(evolution, "PROPOSALS_DIR", base / "data" / "proposals"), \
+                 patch.object(evolution.tool_catalog, "ROOT", base / "catalog"), \\
                  patch.object(evolution, "research", return_value=[]), \
                  patch.object(evolution, "ask_gemini", side_effect=[
                      candidate,
                      {"approved": True, "reasons": ["tests passed"], "risks": []},
                  ]):
                 record = evolution.run_cycle()
-                self.assertEqual(record["status"], "READY_FOR_REVIEW")
-                self.assertEqual(record["promotion"], "NOT_PROMOTED")
+                self.assertEqual(record["status"], "INSTALLED")
+                self.assertEqual(record["promotion"], "INSTALLED_IN_VERSIONED_CATALOG")
+                self.assertEqual(record["catalog_installation"]["active_version"], 1)
                 self.assertTrue((base / "data" / "proposals").exists())
                 saved_state = evolution.json.loads(
                     (base / "data" / "state.json").read_text(encoding="utf-8"))
                 self.assertEqual(len(saved_state["cycles"]), 1)
-                self.assertEqual(saved_state["completed"], [])
+                self.assertEqual(saved_state["completed"], ["json-validator"])
+                installed = evolution.tool_catalog.run_tool("add_values", {"a": 7, "b": 2})
+                self.assertEqual(installed["result"], 9)
 
 
 if __name__ == "__main__":
