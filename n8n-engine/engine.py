@@ -20,7 +20,22 @@ ROOT = Path(os.environ.get("IBRA_ENGINE_DATA", Path(__file__).resolve().parent /
 DRAFTS = ROOT / "drafts"
 TOOLS = ROOT / "tools"
 NAME_RE = re.compile(r"^[a-z][a-z0-9_]{1,47}$")
-CALLS = {"abs": abs, "min": min, "max": max, "round": round, "len": len, "sum": sum}
+MAX_RANGE_ITEMS = 1000
+MAX_EXECUTION_STEPS = 5000
+MAX_INPUT_JSON_BYTES = 300000
+
+
+def safe_range(*args):
+    if not 1 <= len(args) <= 3 or any(type(value) is not int for value in args):
+        raise ValueError("range accepte 1 à 3 entiers, sans booléens.")
+    result = range(*args)
+    if len(result) > MAX_RANGE_ITEMS:
+        raise ValueError("range dépasse la limite de 1000 éléments.")
+    return result
+
+
+CALLS = {"abs": abs, "min": min, "max": max, "round": round, "len": len,
+         "sum": sum, "range": safe_range}
 BINOPS = {ast.Add: lambda a,b:a+b, ast.Sub:lambda a,b:a-b, ast.Mult:lambda a,b:a*b,
           ast.Div:lambda a,b:a/b, ast.FloorDiv:lambda a,b:a//b, ast.Mod:lambda a,b:a%b,
           ast.Pow:lambda a,b:a**b}
@@ -60,7 +75,7 @@ def parse_code(code):
                ast.IfExp, ast.Call, ast.Subscript, ast.Add, ast.Sub, ast.Mult, ast.Div,
                ast.FloorDiv, ast.Mod, ast.Pow, ast.USub, ast.UAdd, ast.Not, ast.And,
                ast.Or, ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.In,
-               ast.NotIn, ast.keyword, ast.Slice)
+               ast.NotIn, ast.keyword, ast.Slice, ast.For)
     for node in ast.walk(tree):
         if not isinstance(node, allowed):
             raise ValueError("Élément Python non autorisé : " + type(node).__name__)
@@ -122,10 +137,23 @@ def eval_expr(node, env):
 
 def execute_code(code, data):
     tree, _ = parse_code(code)
+    try:
+        input_size = len(json.dumps(data, ensure_ascii=False, allow_nan=False).encode("utf-8"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("L'entrée doit être une valeur JSON valide.") from exc
+    if input_size > MAX_INPUT_JSON_BYTES:
+        raise ValueError("Entrée trop volumineuse (limite 300 Ko).")
     env = {"data": data}
     fn = tree.body[0]
-    def run_block(statements):
+    budget = {"steps": 0}
+
+    def run_block(statements, depth=0):
+        if depth > 20:
+            raise ValueError("Profondeur d'exécution maximale dépassée.")
         for statement in statements:
+            budget["steps"] += 1
+            if budget["steps"] > MAX_EXECUTION_STEPS:
+                raise ValueError("Budget d'exécution dépassé (5000 étapes).")
             if isinstance(statement, ast.Assign):
                 value = eval_expr(statement.value, env)
                 for target in statement.targets:
@@ -134,8 +162,24 @@ def execute_code(code, data):
                     env[target.id] = value
             elif isinstance(statement, ast.If):
                 branch = statement.body if eval_expr(statement.test, env) else statement.orelse
-                returned, value = run_block(branch)
+                returned, value = run_block(branch, depth + 1)
                 if returned: return True, value
+            elif isinstance(statement, ast.For):
+                if not isinstance(statement.target, ast.Name) or statement.target.id.startswith("_"):
+                    raise ValueError("La variable d'une boucle doit être un nom simple.")
+                iterable = eval_expr(statement.iter, env)
+                if not isinstance(iterable, (list, tuple, str, dict, range)):
+                    raise ValueError("Boucle limitée aux listes, tuples, textes, dictionnaires et range.")
+                if len(iterable) > MAX_RANGE_ITEMS:
+                    raise ValueError("Une boucle ne peut dépasser 1000 éléments.")
+                for item in iterable:
+                    budget["steps"] += 1
+                    if budget["steps"] > MAX_EXECUTION_STEPS:
+                        raise ValueError("Budget d'exécution dépassé (5000 étapes).")
+                    env[statement.target.id] = item
+                    returned, value = run_block(statement.body, depth + 1)
+                    if returned:
+                        return True, value
             elif isinstance(statement, ast.Return):
                 return True, eval_expr(statement.value, env) if statement.value else None
             elif isinstance(statement, ast.Pass):
@@ -146,8 +190,10 @@ def execute_code(code, data):
     returned, result = run_block(fn.body)
     if not returned:
         raise ValueError("run(data) doit retourner une valeur.")
-    # Vérifie que la valeur peut être transportée en JSON.
-    json.dumps(result, ensure_ascii=False, allow_nan=False)
+    # Vérifie que la valeur peut être transportée en JSON et reste de taille bornée.
+    encoded_result = json.dumps(result, ensure_ascii=False, allow_nan=False).encode("utf-8")
+    if len(encoded_result) > MAX_INPUT_JSON_BYTES:
+        raise ValueError("Résultat trop volumineux (limite 300 Ko).")
     return result
 
 def read_json(path):
