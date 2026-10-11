@@ -13,6 +13,7 @@ from pathlib import Path
 
 import engine
 import tool_catalog
+import capability_broker
 
 ROOT = Path(__file__).resolve().parent
 DATA_DIR = ROOT / "evolution-data"
@@ -117,7 +118,7 @@ def ask_gemini(prompt):
 
 def candidate_prompt(goal, sources):
     return (
-        "Return only JSON with keys name, summary, code, tests. The code must be exactly one "
+        "Return only JSON with keys name, summary, code, tests, capabilities. capabilities is a list of explicit permissions from file.read, file.write, data.json, data.csv, connector:<id>; default to [] and request only the minimum needed. The code must be exactly one "
         "function def run(data): using the restricted syntax accepted by the supplied engine: "
         "simple assignments, if/else, bounded for loops, one-level list comprehensions, return, "
         "literals, arithmetic, comparisons, subscripts, and calls only to "
@@ -142,6 +143,7 @@ def execute_candidate(candidate):
         raise EvolutionError("Candidate code is missing or too large")
     if not isinstance(cases, list) or not 3 <= len(cases) <= 5:
         raise EvolutionError("Candidate must contain 3 to 5 test cases")
+    capabilities = capability_broker.validate_capabilities(candidate.get("capabilities", []))
     engine.parse_code(code)
     outcomes = []
     for index, case in enumerate(cases, 1):
@@ -158,22 +160,28 @@ def execute_candidate(candidate):
                              "expected": case.get("expected"),
                              "error": type(exc).__name__ + ": " + str(exc)})
     return {"name": name, "summary": str(candidate.get("summary", ""))[:1000],
-            "code": code, "tests": outcomes,
+            "code": code, "capabilities": capabilities, "tests": outcomes,
             "all_tests_passed": bool(outcomes) and all(test["passed"] for test in outcomes)}
 
 
 def review_candidate(goal, tested, sources):
     review = ask_gemini(
         "You are the independent IBRA TUTEUR, not the code author. Return JSON with keys "
-        "approved (boolean), reasons (array), risks (array). Assess correctness, goal fit, edge cases, "
-        "determinism, and safety. Approve only if all supplied tests pass and code stays in the "
-        "restricted subset. Do not assume tests ran beyond the results shown.\n"
+        "approved (boolean), reasons (array), risks (array), capabilities (array). Independently review "
+        "the exact requested permissions; echo the exact same capabilities list only if every permission "
+        "is justified and safe, otherwise reject. Assess correctness, goal fit, edge cases, determinism, "
+        "and safety. Approve only if all supplied tests pass and code stays in the restricted subset. "
+        "Do not assume tests ran beyond the results shown.\n"
         + json.dumps({"goal": goal, "tested_proposal": tested, "research_sources": sources},
                      ensure_ascii=False))
     if type(review.get("approved")) is not bool:
         raise EvolutionError("TUTEUR response is missing boolean approved")
     if not isinstance(review.get("reasons", []), list) or not isinstance(review.get("risks", []), list):
         raise EvolutionError("TUTEUR reasons and risks must be arrays")
+    reviewed_capabilities = capability_broker.validate_capabilities(review.get("capabilities", []))
+    if reviewed_capabilities != tested["capabilities"]:
+        raise EvolutionError("TUTEUR capabilities do not exactly match the requested permissions")
+    review["capabilities"] = reviewed_capabilities
     review["approved"] = review["approved"] and tested["all_tests_passed"]
     return review
 
@@ -199,7 +207,8 @@ def run_cycle():
         try:
             # Re-run the tests at the catalogue boundary; keep previous versions for rollback.
             installation = tool_catalog.install_tool(
-                tested["name"], tested["code"], candidate["tests"], tuteur)
+                tested["name"], tested["code"], candidate["tests"], tuteur,
+                capabilities=tested["capabilities"])
             status = "INSTALLED"
             completed.add(goal["id"])
         except Exception as exc:
