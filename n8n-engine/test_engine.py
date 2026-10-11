@@ -21,6 +21,18 @@ class EngineTests(unittest.TestCase):
         code = "def run(data):\n    return [value * 2 for value in data['values'] if value > 1]\n"
         self.assertEqual(engine.execute_code(code, {"values": [1, 2, 3]}), [4, 6])
 
+    def test_safe_text_functions(self):
+        code = "def run(data):\n    text = lower(strip(data['text']))\n    text = replace(text, '  ', ' ')\n    return split(text, ' ')\n"
+        self.assertEqual(engine.execute_code(code, {"text": "  HELLO  WORLD  "}), ["hello", "world"])
+
+    def test_join_and_sorted(self):
+        code = "def run(data):\n    return join('-', sorted(data['values']))\n"
+        self.assertEqual(engine.execute_code(code, {"values": ["z", "a", "m"]}), "a-m-z")
+
+    def test_text_helpers_reject_wrong_types(self):
+        with self.assertRaisesRegex(ValueError, "attend du texte"):
+            engine.execute_code("def run(data):\n    return upper(data['value'])\n", {"value": 42})
+
     def test_nested_list_comprehensions_are_rejected(self):
         code = "def run(data):\n    return [[y for y in values] for values in data]\n"
         with self.assertRaisesRegex(ValueError, "compréhensions imbriquées"):
