@@ -61,6 +61,24 @@ class CatalogTests(unittest.TestCase):
                                  review, ["file.read"])
         self.assertEqual(catalog.list_tools(), [])
 
+
+    def test_rollback_restores_previous_version_permissions(self):
+        read_review = {
+            "approved": True, "reasons": ["reviewed"], "risks": [],
+            "capabilities": ["file.read"],
+        }
+        no_permissions_review = {
+            "approved": True, "reasons": ["reviewed"], "risks": [],
+            "capabilities": [],
+        }
+        catalog.install_tool("permissioned_tool", VALID_CODE, VALID_TESTS,
+                             read_review, ["file.read"])
+        catalog.install_tool("permissioned_tool", VALID_CODE, VALID_TESTS,
+                             no_permissions_review, [])
+        self.assertEqual(catalog.list_tools()[0]["capabilities"], [])
+        catalog.rollback_tool("permissioned_tool")
+        self.assertEqual(catalog.list_tools()[0]["capabilities"], ["file.read"])
+
     def test_rejects_unapproved_tuteur(self):
         review = {"approved": False, "reasons": ["Risque"], "risks": ["Non sûr"]}
         with self.assertRaises(catalog.CatalogError):
