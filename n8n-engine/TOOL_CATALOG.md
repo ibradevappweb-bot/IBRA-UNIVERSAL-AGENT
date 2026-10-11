@@ -10,7 +10,7 @@ python -m unittest -v
 python tool_catalog.py
 ```
 
-Le service écoute par défaut sur `127.0.0.1:8768`. Données persistées dans `data/catalog/`. Définir `IBRA_CATALOG_TOKEN` si un jeton d'accès local est souhaité. Un jeton est obligatoire si le service écoute hors de localhost.
+Le service écoute par défaut sur `127.0.0.1:8768`. Données persistées dans `data/catalog/`. **Définis obligatoirement `IBRA_CATALOG_TOKEN` avant d'utiliser les routes POST** : sans jeton, `/install`, `/run` et `/rollback` répondent `503 IBRA_CATALOG_TOKEN_REQUIRED`. Avec un jeton configuré, chaque POST exige `Authorization: Bearer <jeton>`. Pour une écoute hors localhost, le jeton reste obligatoire.
 
 ## API
 - `GET /health` : santé du service.
