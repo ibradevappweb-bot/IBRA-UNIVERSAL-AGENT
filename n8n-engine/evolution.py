@@ -21,6 +21,8 @@ STATE_PATH = DATA_DIR / "state.json"
 PROPOSALS_DIR = DATA_DIR / "proposals"
 MODEL = os.environ.get("IBRA_GEMINI_MODEL", "gemini-2.5-flash")
 GOALS = [
+    {"id": "local-svg-image-creator", "priority": 120, "title": "Create local SVG images",
+     "objective": "Create a deterministic run(data) tool that returns a complete, self-contained SVG illustration as a string from structured input fields subject, title, background, accent, and style. It must create a valid 512x512 SVG using only inline vector shapes and text, no external resources, no scripts, no network, and no file access. Use safe fixed geometry and simple scene composition; return only the SVG string. Request the file.write capability because the trusted use-tool endpoint will validate and save the SVG after the tool runs. Tests must check exact output strings for at least three distinct inputs; do not claim photorealistic diffusion-model output."},
     {"id": "json-validator", "priority": 100, "title": "Validate required JSON fields",
      "objective": "Create a small deterministic run(data) helper that reports missing required keys."},
     {"id": "text-normalizer", "priority": 80, "title": "Normalize whitespace",
