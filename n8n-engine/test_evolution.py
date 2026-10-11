@@ -1,8 +1,11 @@
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 import evolution
 
 
-class PlannerTests(unittest.TestCase):
+class EvolutionTests(unittest.TestCase):
     def test_highest_priority_selected(self):
         goals = [
             {"id": "low", "priority": 1, "title": "Low"},
@@ -26,6 +29,88 @@ class PlannerTests(unittest.TestCase):
 
     def test_empty_backlog_returns_none(self):
         self.assertIsNone(evolution.choose_goal([], set()))
+
+    def test_valid_candidate_runs_real_tests(self):
+        candidate = {
+            "name": "add_values",
+            "summary": "Add two values",
+            "code": "def run(data):\n    return data['a'] + data['b']\n",
+            "tests": [
+                {"input": {"a": 2, "b": 3}, "expected": 5},
+                {"input": {"a": -1, "b": 1}, "expected": 0},
+                {"input": {"a": 0, "b": 0}, "expected": 0},
+            ],
+        }
+        result = evolution.execute_candidate(candidate)
+        self.assertTrue(result["all_tests_passed"])
+        self.assertEqual(len(result["tests"]), 3)
+
+    def test_failed_case_prevents_approval(self):
+        candidate = {
+            "name": "subtract_values",
+            "summary": "Intentionally wrong for expected output",
+            "code": "def run(data):\n    return data['a'] - data['b']\n",
+            "tests": [
+                {"input": {"a": 2, "b": 3}, "expected": 5},
+                {"input": {"a": 1, "b": 1}, "expected": 0},
+                {"input": {"a": 0, "b": 0}, "expected": 0},
+            ],
+        }
+        result = evolution.execute_candidate(candidate)
+        self.assertFalse(result["all_tests_passed"])
+        with patch.object(evolution, "ask_gemini", return_value={
+            "approved": True, "reasons": ["looks fine"], "risks": []}):
+            review = evolution.review_candidate({"id": "demo"}, result, [])
+        self.assertFalse(review["approved"])
+
+    def test_imports_rejected(self):
+        candidate = {
+            "name": "unsafe_tool",
+            "summary": "must be rejected",
+            "code": "import os\ndef run(data):\n    return 1\n",
+            "tests": [
+                {"input": {}, "expected": 1},
+                {"input": {}, "expected": 1},
+                {"input": {}, "expected": 1},
+            ],
+        }
+        with self.assertRaises(ValueError):
+            evolution.execute_candidate(candidate)
+
+    def test_missing_gemini_key_fails_explicitly(self):
+        with patch.dict("os.environ", {}, clear=True):
+            with self.assertRaisesRegex(evolution.EvolutionError, "GEMINI_API_KEY"):
+                evolution.ask_gemini("test")
+
+    def test_run_cycle_records_proposal_without_promoting(self):
+        candidate = {
+            "name": "add_values",
+            "summary": "Add two values",
+            "code": "def run(data):\n    return data['a'] + data['b']\n",
+            "tests": [
+                {"input": {"a": 2, "b": 3}, "expected": 5},
+                {"input": {"a": 1, "b": 1}, "expected": 2},
+                {"input": {"a": 0, "b": 0}, "expected": 0},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            with patch.object(evolution, "DATA_DIR", base / "data"), \
+                 patch.object(evolution, "STATE_PATH", base / "data" / "state.json"), \
+                 patch.object(evolution, "PROPOSALS_DIR", base / "data" / "proposals"), \
+                 patch.object(evolution, "research", return_value=[]), \
+                 patch.object(evolution, "ask_gemini", side_effect=[
+                     candidate,
+                     {"approved": True, "reasons": ["tests passed"], "risks": []},
+                 ]):
+                record = evolution.run_cycle()
+                self.assertEqual(record["status"], "READY_FOR_REVIEW")
+                self.assertEqual(record["promotion"], "NOT_PROMOTED")
+                self.assertTrue((base / "data" / "proposals").exists())
+                saved_state = evolution.json.loads(
+                    (base / "data" / "state.json").read_text(encoding="utf-8"))
+                self.assertEqual(len(saved_state["cycles"]), 1)
+                self.assertEqual(saved_state["completed"], [])
 
 
 if __name__ == "__main__":
