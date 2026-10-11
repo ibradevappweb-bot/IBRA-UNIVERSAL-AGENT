@@ -77,3 +77,34 @@ It binds to `127.0.0.1:8767` by default. Check `GET http://127.0.0.1:8767/health
 Import `IBRA-Evolution-48h.n8n.json` into n8n. It has a manual trigger and a 48-hour Schedule Trigger, both calling the local API. Keep the workflow inactive until you have started the service and verified a manual run. Activate it only after the credentials and actual response have been checked. The workflow is a template in GitHub, not yet imported or activated in your running n8n instance.
 
 Important: the cycle now installs approved tools into the separate versioned catalogue, not into the engine source or Android app. External Gemini/Exa calls have not been verified without your configured credentials, and the 48-hour workflow is not yet confirmed active on your phone.
+
+
+## Capability broker: fichiers, JSON/CSV et connecteurs contrôlés
+
+Le nouveau capability_broker.py expose un service local séparé sur 127.0.0.1:8769. Il refuse de démarrer sans IBRA_CAPABILITY_TOKEN et refuse toute écoute hors localhost. Il ne donne pas à l'interpréteur AST un accès direct au réseau ou au disque : un orchestrateur de confiance doit appeler le broker avec le nom d'un outil déjà installé.
+
+### Permissions versionnées
+
+Chaque version du catalogue conserve une liste explicite capabilities. Permissions possibles :
+- file.read et file.write : uniquement dans le répertoire data/workspace (ou IBRA_CAPABILITY_WORKSPACE), fichiers UTF-8, 300 Ko maximum ; chemins absolus, traversal et liens symboliques refusés.
+- data.json : sélection/renommage de clés, filtrage égalité de listes JSON ; résultat limité à 300 Ko.
+- data.csv : sélection/renommage de colonnes et filtre d'égalité ; 5 000 lignes et 200 colonnes maximum.
+- connector:<id> : un connecteur configuré par l'administrateur. HTTPS seulement, méthode et chemins exacts allowlistés, redirections interdites, timeout 10 s et réponse de 300 Ko maximum.
+
+La liste de permissions demandées à POST /install doit correspondre exactement à tuteur_review.capabilities. Si la revue ne correspond pas, si les tests échouent ou si le TUTEUR refuse, l'installation est bloquée. Les permissions sont attachées à la version et vérifiées par le broker à chaque action.
+
+### Configuration minimale
+
+    export IBRA_CATALOG_TOKEN='secret-local-du-catalogue'
+    export IBRA_CAPABILITY_TOKEN='secret-local-du-broker'
+    python tool_catalog.py
+    # Dans un autre terminal, même dossier :
+    python capability_broker.py
+
+Le jeton du broker est distinct du jeton du catalogue. Ne publie pas ces jetons et ne les place pas dans GitHub. Le broker ne fournit aucun connecteur par défaut. L'administrateur configure IBRA_CONNECTORS_JSON dans l'environnement, par exemple avec un identifiant, un base_url HTTPS, une liste de méthodes et une liste de chemins exacts. Les secrets restent dans des variables d'environnement ; ne les mets pas dans le JSON de configuration.
+
+Routes POST du broker : /file/read, /file/write, /data/json, /data/csv, /connector/request. Toutes exigent Authorization: Bearer <IBRA_CAPABILITY_TOKEN> et un champ tool. Le nom de l'outil doit posséder la permission requise dans sa version active. Les actions externes ne sont pas encore automatiquement appelées par le code généré : l'orchestrateur doit les invoquer explicitement, ce qui évite de transformer un outil généré en programme arbitraire disposant du réseau.
+
+### Limites de sécurité
+
+Les connecteurs ne sont utilisables que lorsqu'ils sont explicitement configurés ; aucune URL arbitraire n'est acceptée et les redirections HTTP sont bloquées. Le DNS et la destination d'un domaine configuré restent une responsabilité de l'administrateur réseau. Le système TUTEUR reste une revue de modèle, pas une preuve formelle. Protéger les services localement, utiliser des secrets forts et inspecter les permissions avant une installation réelle.
