@@ -24,6 +24,7 @@ Exemple de corps JSON pour `POST /install` :
 ```json
 {
   "name": "double_value",
+  "capabilities": [],
   "code": "def run(data):\n    return data['value'] * 2\n",
   "tests": [
     {"input": {"value": 1}, "expected": 2},
@@ -33,7 +34,8 @@ Exemple de corps JSON pour `POST /install` :
   "tuteur_review": {
     "approved": true,
     "reasons": ["La logique et les cas fournis ont été examinés"],
-    "risks": ["Une valeur non numérique fera échouer l'outil"]
+    "risks": ["Une valeur non numérique fera échouer l'outil"],
+    "capabilities": []
   }
 }
 ```
