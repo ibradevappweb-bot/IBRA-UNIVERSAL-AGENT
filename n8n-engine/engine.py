@@ -54,7 +54,7 @@ def parse_code(code):
         raise ValueError("Signature obligatoire : def run(data):")
     if fn.decorator_list or fn.args.vararg or fn.args.kwarg or fn.args.kwonlyargs or fn.args.defaults:
         raise ValueError("Décorateurs et arguments supplémentaires interdits.")
-    allowed = (ast.Module, ast.FunctionDef, ast.arguments, ast.arg, ast.Return, ast.Assign,
+    allowed = (ast.Module, ast.FunctionDef, ast.arguments, ast.arg, ast.Return, ast.Assign, ast.Store,
                ast.If, ast.Pass, ast.Name, ast.Load, ast.Store, ast.Constant, ast.List,
                ast.Tuple, ast.Dict, ast.BinOp, ast.UnaryOp, ast.BoolOp, ast.Compare,
                ast.IfExp, ast.Call, ast.Subscript, ast.Add, ast.Sub, ast.Mult, ast.Div,
