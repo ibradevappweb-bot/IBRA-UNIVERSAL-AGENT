@@ -172,7 +172,7 @@ class CapabilityBrokerTests(unittest.TestCase):
                 "exa_agent", "exa_search", "POST", "/search", {"query": "test"})
         self.assertEqual(result["result"], {"ok": True})
         self.assertEqual(opener.request.full_url, "https://api.example.com/v1/search")
-        self.assertEqual(opener.request.get_header("X-api-key"), "test-secret")
+        self.assertEqual(dict((k.lower(), v) for k, v in opener.request.header_items())["x-api-key"], "test-secret")
         self.assertEqual(opener.timeout, 10)
 
     def test_connector_rejects_http_and_local_hosts(self):
