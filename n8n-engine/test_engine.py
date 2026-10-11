@@ -17,6 +17,15 @@ class EngineTests(unittest.TestCase):
         code = "def run(data):\n    total = 0\n    for value in data['values']:\n        total = total + value\n    return total\n"
         self.assertEqual(engine.execute_code(code, {"values": [2, 3, 5]}), 10)
 
+    def test_list_comprehension_maps_and_filters(self):
+        code = "def run(data):\n    return [value * 2 for value in data['values'] if value > 1]\n"
+        self.assertEqual(engine.execute_code(code, {"values": [1, 2, 3]}), [4, 6])
+
+    def test_nested_list_comprehensions_are_rejected(self):
+        code = "def run(data):\n    return [[y for y in values] for values in data]\n"
+        with self.assertRaisesRegex(ValueError, "compréhensions imbriquées"):
+            engine.execute_code(code, [[1, 2], [3]])
+
     def test_range_is_available_and_bounded(self):
         code = "def run(data):\n    total = 0\n    for value in range(data['count']):\n        total = total + value\n    return total\n"
         self.assertEqual(engine.execute_code(code, {"count": 5}), 10)
