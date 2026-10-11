@@ -65,7 +65,7 @@ class CapabilityBrokerTests(unittest.TestCase):
         outside.write_text("not for broker", encoding="utf-8")
         link = broker.WORKSPACE / "escape.txt"
         link.symlink_to(outside)
-        with self.assertRaisesRegex(broker.CapabilityError, "symboliques"):
+        with self.assertRaisesRegex(broker.CapabilityError, "sort de l'espace|symboliques"):
             broker.read_file("file_agent", "escape.txt")
 
     def test_json_select_rename_and_filter(self):
