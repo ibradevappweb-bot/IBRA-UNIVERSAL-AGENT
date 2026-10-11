@@ -100,6 +100,8 @@ def eval_expr(node, env):
     if isinstance(node, ast.Dict):
         return {eval_expr(k, env): eval_expr(v, env) for k, v in zip(node.keys, node.values)}
     if isinstance(node, ast.ListComp):
+        if sum(1 for child in ast.walk(node) if isinstance(child, ast.ListComp)) > 1:
+            raise ValueError("Les compréhensions imbriquées sont interdites.")
         if len(node.generators) != 1:
             raise ValueError("Une compréhension de liste doit avoir un seul for.")
         generator = node.generators[0]
