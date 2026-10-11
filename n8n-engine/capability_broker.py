@@ -235,12 +235,14 @@ def _validate_public_https_base(base_url):
         raise CapabilityError("Hôte local interdit.")
     try:
         ip = ipaddress.ip_address(host)
-        if not ip.is_global:
-            raise CapabilityError("Adresse IP non publique interdite.")
     except ValueError:
         # Noms DNS autorisés uniquement s'ils ont été inscrits explicitement par l'administrateur.
         if "." not in host or host.startswith(".") or host.endswith("."):
             raise CapabilityError("Nom d'hôte invalide.")
+    else:
+        # CapabilityError hérite de ValueError : cette vérification doit rester hors du try.
+        if not ip.is_global:
+            raise CapabilityError("Adresse IP non publique interdite.")
     return parsed
 
 
