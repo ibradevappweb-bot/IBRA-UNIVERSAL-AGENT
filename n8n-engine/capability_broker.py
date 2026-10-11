@@ -273,7 +273,16 @@ def connector_request(tool_name, connector_id, method, path, payload=None):
         secret = os.environ.get(token_env, "")
         if not secret:
             raise CapabilityError("Secret du connecteur manquant dans l'environnement.")
-        headers["Authorization"] = "Bearer " + secret
+        token_header = config.get("token_header", "Authorization")
+        token_prefix = config.get("token_prefix", "Bearer ")
+        if (not isinstance(token_header, str)
+                or not re.fullmatch(r"[A-Za-z][A-Za-z0-9-]{0,63}", token_header)
+                or token_header.lower() in {"host", "content-length", "connection",
+                                            "transfer-encoding", "cookie", "set-cookie"}):
+            raise CapabilityError("En-tête de secret non autorisé.")
+        if not isinstance(token_prefix, str) or len(token_prefix) > 30:
+            raise CapabilityError("Préfixe du secret invalide.")
+        headers[token_header] = token_prefix + secret
     request = urllib.request.Request(url, data=body, headers=headers, method=method)
     opener = urllib.request.build_opener(_NoRedirect())
     try:
