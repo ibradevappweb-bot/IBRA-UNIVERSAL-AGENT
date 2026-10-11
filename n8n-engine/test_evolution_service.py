@@ -26,7 +26,7 @@ class SvgValidationTests(unittest.TestCase):
             evolution_service.validate_svg_image('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')
 
     def test_external_resources_are_rejected(self):
-        with self.assertRaisesRegex(ValueError, "Attribut SVG interdit"):
+        with self.assertRaisesRegex(ValueError, "Élément SVG interdit"):
             evolution_service.validate_svg_image('<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/a.png"/></svg>')
 
     def test_tool_can_return_svg_without_saving(self):
