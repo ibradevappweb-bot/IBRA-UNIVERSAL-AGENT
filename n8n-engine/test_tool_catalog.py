@@ -26,6 +26,12 @@ class CatalogTests(unittest.TestCase):
         self.root_patch.stop()
         self.temp.cleanup()
 
+    def test_http_mutations_require_a_configured_token(self):
+        self.assertEqual(catalog.mutation_auth_result("", "")[1:], (503, "IBRA_CATALOG_TOKEN_REQUIRED"))
+        self.assertEqual(catalog.mutation_auth_result("secret", "")[1:], (401, "UNAUTHORIZED"))
+        self.assertEqual(catalog.mutation_auth_result("secret", "Bearer wrong")[1:], (401, "UNAUTHORIZED"))
+        self.assertEqual(catalog.mutation_auth_result("secret", "Bearer secret"), (True, 200, "OK"))
+
     def test_install_and_run(self):
         result = catalog.install_tool("double_value", VALID_CODE, VALID_TESTS, APPROVED)
         self.assertEqual(result["version"], 1)
