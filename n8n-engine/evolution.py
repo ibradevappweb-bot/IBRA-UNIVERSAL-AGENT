@@ -188,12 +188,25 @@ def review_candidate(goal, tested, sources):
     return review
 
 
+def merge_backlog(existing, completed):
+    """Keep persisted backlog entries and append new built-in goals without duplicates."""
+    if not isinstance(existing, list) or any(not isinstance(item, dict) for item in existing):
+        raise EvolutionError("Persisted backlog must be a list of goal objects.")
+    merged = list(existing)
+    known = {item.get("id") for item in merged}
+    for goal in GOALS:
+        if goal.get("id") not in known and goal.get("id") not in completed:
+            merged.append(goal)
+            known.add(goal.get("id"))
+    return merged
+
+
 def run_cycle():
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     PROPOSALS_DIR.mkdir(parents=True, exist_ok=True)
     state = read_state()
-    goals = state.get("backlog", GOALS)
     completed = set(state.get("completed", []))
+    goals = merge_backlog(state.get("backlog", GOALS), completed)
     goal = choose_goal(goals, completed)
     if goal is None:
         raise EvolutionError("No pending goals. A new goal needs to be added to the backlog.")
