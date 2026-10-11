@@ -132,6 +132,49 @@ class CapabilityBrokerTests(unittest.TestCase):
                 broker.connector_request("exa_agent", "exa_search", "DELETE", "/search")
             opener.assert_not_called()
 
+
+    def test_configured_connector_uses_only_allowlisted_url_and_secret_header(self):
+        self.install("exa_agent", ["connector:exa_search"])
+
+        class Response:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                return False
+            def read(self, limit):
+                return b'{"ok":true}'
+
+        class Opener:
+            def __init__(self):
+                self.request = None
+                self.timeout = None
+            def open(self, request, timeout):
+                self.request = request
+                self.timeout = timeout
+                return Response()
+
+        config = {
+            "exa_search": {
+                "base_url": "https://api.example.com/v1",
+                "methods": ["POST"],
+                "paths": ["/search"],
+                "token_env": "IBRA_CONNECTOR_EXA_SEARCH_TOKEN",
+                "token_header": "x-api-key",
+                "token_prefix": "",
+            }
+        }
+        opener = Opener()
+        with patch.dict(os.environ, {
+            "IBRA_CONNECTORS_JSON": json.dumps(config),
+            "IBRA_CONNECTOR_EXA_SEARCH_TOKEN": "test-secret",
+        }), patch.object(broker.urllib.request, "build_opener", return_value=opener):
+            result = broker.connector_request(
+                "exa_agent", "exa_search", "POST", "/search", {"query": "test"})
+        self.assertEqual(result["result"], {"ok": True})
+        self.assertEqual(opener.request.full_url, "https://api.example.com/v1/search")
+        self.assertEqual(opener.request.get_header("X-api-key"), "test-secret")
+        self.assertEqual(opener.timeout, 10)
+
     def test_connector_rejects_http_and_local_hosts(self):
         for url in ("http://api.example.com", "https://localhost", "https://127.0.0.1"):
             with self.subTest(url=url), self.assertRaises(broker.CapabilityError):
