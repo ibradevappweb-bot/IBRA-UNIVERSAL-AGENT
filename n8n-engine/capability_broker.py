@@ -100,6 +100,8 @@ def safe_path(relative_path, for_write=False):
 def read_file(tool_name, relative_path):
     require_permission(tool_name, "file.read")
     target = safe_path(relative_path)
+    if target.stat().st_size > MAX_BYTES:
+        raise CapabilityError("Fichier trop volumineux (300 Ko maximum).")
     raw = target.read_bytes()
     if len(raw) > MAX_BYTES:
         raise CapabilityError("Fichier trop volumineux (300 Ko maximum).")
