@@ -34,7 +34,7 @@ class EvolutionTests(unittest.TestCase):
         candidate = {
             "name": "add_values",
             "summary": "Add two values",
-            "code": "def run(data):\n    return data['value']\n",
+            "code": "def run(data):\n    return data['a'] + data['b']\n",
             "tests": [
                 {"input": {"a": 2, "b": 3}, "expected": 5},
                 {"input": {"a": -1, "b": 1}, "expected": 0},
@@ -49,7 +49,7 @@ class EvolutionTests(unittest.TestCase):
         candidate = {
             "name": "subtract_values",
             "summary": "Intentionally wrong for expected output",
-            "code": "def run(data):\n    return data['value']\n",
+            "code": "def run(data):\n    return data['a'] - data['b']\n",
             "tests": [
                 {"input": {"a": 2, "b": 3}, "expected": 5},
                 {"input": {"a": 1, "b": 1}, "expected": 0},
@@ -107,7 +107,7 @@ class EvolutionTests(unittest.TestCase):
         candidate = {
             "name": "add_values",
             "summary": "Add two values",
-            "code": "def run(data):\n    return data['value']\n",
+            "code": "def run(data):\n    return data['a'] + data['b']\n",
             "tests": [
                 {"input": {"a": 2, "b": 3}, "expected": 5},
                 {"input": {"a": 1, "b": 1}, "expected": 2},
