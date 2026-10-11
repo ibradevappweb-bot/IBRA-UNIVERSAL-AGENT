@@ -1,0 +1,53 @@
+{
+  "name": "IBRA Autonomous Evolution Cycle (manual until credentials are configured)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a0d8f0a7-4c43-4d93-90f1-0d65e5e16f01",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 48
+            }
+          ]
+        }
+      },
+      "id": "a0d8f0a7-4c43-4d93-90f1-0d65e5e16f02",
+      "name": "Every 48 hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [240, 500]
+    },
+    {
+      "parameters": {
+        "command": "python /PATH/TO/n8n-engine/evolution.py"
+      },
+      "id": "a0d8f0a7-4c43-4d93-90f1-0d65e5e16f03",
+      "name": "Run Evolution Cycle",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [520, 400]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [[{"node": "Run Evolution Cycle", "type": "main", "index": 0}]]
+    },
+    "Every 48 hours": {
+      "main": [[{"node": "Run Evolution Cycle", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a0d8f0a7-4c43-4d93-90f1-0d65e5e16f04"
+}
