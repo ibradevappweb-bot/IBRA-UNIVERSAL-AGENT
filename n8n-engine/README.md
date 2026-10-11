@@ -29,7 +29,7 @@ Run: python -m unittest -v
 The engine uses a restricted Python AST interpreter. Imports, attribute access, loops, classes and arbitrary function calls are rejected. This is not a complete OS sandbox. Keep the service local and require TUTEUR review before approving tools.
 
 
-## Autonomous evolution cycle (proposal-only mode)
+## Autonomous evolution cycle with versioned tool catalog
 
 `evolution.py` now implements one bounded cycle:
 1. choose the highest-priority unfinished backlog item deterministically;
@@ -37,7 +37,7 @@ The engine uses a restricted Python AST interpreter. Imports, attribute access, 
 3. ask Gemini to draft a small `run(data)` helper and 3–5 test cases;
 4. execute the candidate tests using the restricted interpreter in `engine.py`;
 5. ask Gemini in a separate request to act as the independent TUTEUR;
-6. save the source list, candidate, individual test outcomes, review, and status in `evolution-data/proposals/`.
+6. save the audit record, then install approved tools into the versioned `tool_catalog.py` catalogue; retain prior versions for rollback.
 
 ### Run one cycle
 
@@ -56,7 +56,7 @@ Do not put keys in source files, commit them, or send them in chat. Gemini is re
 
 ### Important safety boundary
 
-A proposal is **not automatically installed** in the live engine. It is saved with status `READY_FOR_REVIEW` only if every candidate test passes and the TUTEUR approves it; otherwise it is `REJECTED`. This first version deliberately does not rewrite the engine, commit to GitHub, merge branches, or promote generated code. That restriction protects the existing Android application and avoids treating a model's approval as proof of safety.
+A generated tool is installed into the separate versioned catalogue only when every candidate test passes and the separate TUTEUR request approves it. Failed tests or a rejected review prevent installation. The engine source, Git history, and Android application are never rewritten by the evolution cycle. The catalogue runs tools through the restricted AST interpreter and preserves previous versions for rollback. A TUTEUR response is still model-based review, not proof of safety; review and test results must be inspected for high-impact uses.
 
 The GitHub Actions test workflow validates the Python code and deterministic mock-based cycle tests. It does not prove that external Gemini/Exa credentials work, nor that the 48-hour n8n schedule is installed or active. The n8n JSON is an import template; replace its placeholder path with the actual Python path on the n8n host, configure credentials securely, test a manual run, then activate the schedule. Do not expose the local engine on the public Internet without authentication and a stronger sandbox.
 
@@ -76,4 +76,4 @@ It binds to `127.0.0.1:8767` by default. Check `GET http://127.0.0.1:8767/health
 
 Import `IBRA-Evolution-48h.n8n.json` into n8n. It has a manual trigger and a 48-hour Schedule Trigger, both calling the local API. Keep the workflow inactive until you have started the service and verified a manual run. Activate it only after the credentials and actual response have been checked. The workflow is a template in GitHub, not yet imported or activated in your running n8n instance.
 
-Important: the current cycle creates a reviewed proposal; it does not install or promote generated code. External Gemini/Exa calls have not been verified without your configured credentials.
+Important: the cycle now installs approved tools into the separate versioned catalogue, not into the engine source or Android app. External Gemini/Exa calls have not been verified without your configured credentials, and the 48-hour workflow is not yet confirmed active on your phone.
