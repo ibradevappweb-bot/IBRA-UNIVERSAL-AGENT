@@ -20,6 +20,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var textToSpeech: TextToSpeech
     private lateinit var geminiChatEngine: GeminiChatEngine
+    private val evolutionBridge by lazy { EvolutionBridge() }
 
     private val agentCore by lazy {
         AgentCore(
@@ -74,6 +75,32 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (clean.isEmpty()) return
         binding.conversation.append("\n\nVous : $clean")
         binding.textInput.text?.clear()
+
+        // Explicit commands route to the local evolution service before normal chat handling.
+        val command = clean.lowercase(Locale.ROOT)
+        val asksStatus = command.contains("contrôle le reste") ||
+            command.contains("controle le reste") ||
+            (command.contains("contrôle") && (command.contains("évolution") || command.contains("agent"))) ||
+            (command.contains("controle") && (command.contains("evolution") || command.contains("agent"))) ||
+            (command.contains("vérifie") && (command.contains("évolution") || command.contains("agent"))) ||
+            (command.contains("verifie") && (command.contains("evolution") || command.contains("agent"))) ||
+            (command.contains("état") && command.contains("évolution")) ||
+            (command.contains("etat") && command.contains("evolution"))
+        val asksCycle = command.contains("lance le cycle d'évolution") ||
+            command.contains("lance le cycle d'evolution") ||
+            command.contains("démarre le cycle d'évolution") ||
+            command.contains("demarre le cycle d'evolution") ||
+            command.contains("lance la création de l'outil image") ||
+            command.contains("lance la creation de l'outil image")
+
+        if (asksStatus || asksCycle) {
+            binding.status.text = if (asksCycle) "Vérification et cycle en cours…" else "Connexion au moteur d'évolution…"
+            val callback: (String) -> Unit = { message ->
+                runOnUiThread { showResponse(message) }
+            }
+            if (asksCycle) evolutionBridge.runCycle(callback) else evolutionBridge.checkStatus(callback)
+            return
+        }
 
         val decision = BrainEngine().understand(clean)
         if (decision.taskType == TaskType.CHAT) {
