@@ -104,7 +104,7 @@ def list_tools():
     return result
 
 
-def install_tool(name, code, cases, tuteur_review):
+def install_tool(name, code, cases, tuteur_review, capabilities=None):
     """Installe une nouvelle version uniquement après tests verts et revue TUTEUR approuvée."""
     name = validate_name(name)
     if not isinstance(code, str) or len(code) > 20000:
@@ -115,6 +115,17 @@ def install_tool(name, code, cases, tuteur_review):
         raise CatalogError("La revue TUTEUR doit fournir reasons et risks sous forme de listes.")
     if not tuteur_review["approved"]:
         raise CatalogError("Installation refusée : le TUTEUR n'a pas approuvé l'outil.")
+
+    # Les permissions sont explicites et versionnées avec le code ; aucune permission implicite.
+    import capability_broker
+    requested_capabilities = capability_broker.validate_capabilities(
+        [] if capabilities is None else capabilities)
+    reviewed_capabilities = tuteur_review.get("capabilities", [])
+    if not isinstance(reviewed_capabilities, list):
+        raise CatalogError("La revue TUTEUR doit déclarer capabilities sous forme de liste.")
+    reviewed_capabilities = capability_broker.validate_capabilities(reviewed_capabilities)
+    if requested_capabilities != reviewed_capabilities:
+        raise CatalogError("Installation refusée : permissions demandées et permissions approuvées par le TUTEUR différentes.")
 
     outcomes = run_tests(code, cases)
     if not outcomes or not all(item["passed"] for item in outcomes):
@@ -137,6 +148,7 @@ def install_tool(name, code, cases, tuteur_review):
     version = max(versions, default=0) + 1
     record = {
         "name": name, "version": version, "code": code,
+        "capabilities": requested_capabilities,
         "tests": outcomes, "test_count": len(outcomes),
         "tuteur_review": tuteur_review, "installed_at": now(),
         "status": "INSTALLED"
