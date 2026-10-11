@@ -119,9 +119,12 @@ def candidate_prompt(goal, sources):
     return (
         "Return only JSON with keys name, summary, code, tests. The code must be exactly one "
         "function def run(data): using the restricted syntax accepted by the supplied engine: "
-        "simple assignments, if/else, return, literals, arithmetic, comparisons, subscripts, and "
-        "calls only to abs/min/max/round/len/sum. No imports, attributes, loops, comprehensions, "
-        "or file/network access. Supply 3 to 5 test objects each with input and expected. Make "
+        "simple assignments, if/else, bounded for loops, one-level list comprehensions, return, "
+        "literals, arithmetic, comparisons, subscripts, and calls only to "
+        "abs/min/max/round/len/sum/range. range and each loop/collection are limited to 1000 "
+        "items, total execution is limited to 5000 steps, and nested list comprehensions are "
+        "forbidden. No imports, attributes, while loops, or file/network access. Supply 3 to 5 "
+        "test objects each with input and expected. Make "
         "the helper deterministic and small. Never claim tests were executed.\nOBJECTIVE: "
         + json.dumps(goal, ensure_ascii=False) + "\nRESEARCH SOURCES: "
         + json.dumps(sources, ensure_ascii=False))
