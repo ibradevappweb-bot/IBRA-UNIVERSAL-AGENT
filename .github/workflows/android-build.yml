@@ -2,7 +2,7 @@ name: Android Build
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, agent-control-bridge ]
   workflow_dispatch:
 
 jobs:
