@@ -63,6 +63,27 @@ class EvolutionTests(unittest.TestCase):
             review = evolution.review_candidate({"id": "demo"}, result, [])
         self.assertFalse(review["approved"])
 
+
+    def test_tuteur_must_echo_exact_requested_capabilities(self):
+        candidate = {
+            "name": "read_helper",
+            "summary": "Needs file read permission",
+            "code": "def run(data):\\n    return data['value']\\n",
+            "capabilities": ["file.read"],
+            "tests": [
+                {"input": {"value": 1}, "expected": 1},
+                {"input": {"value": 2}, "expected": 2},
+                {"input": {"value": 3}, "expected": 3},
+            ],
+        }
+        tested = evolution.execute_candidate(candidate)
+        with patch.object(evolution, "ask_gemini", return_value={
+            "approved": True, "reasons": ["ok"], "risks": [],
+            "capabilities": [],
+        }):
+            with self.assertRaisesRegex(evolution.EvolutionError, "do not exactly match"):
+                evolution.review_candidate({"id": "read-helper"}, tested, [])
+
     def test_imports_rejected(self):
         candidate = {
             "name": "unsafe_tool",
