@@ -26,7 +26,7 @@ Set IBRA_ENGINE_TOKEN to require a bearer token. A token is mandatory if the ser
 Run: python -m unittest -v
 
 ## Safety
-The engine uses a restricted Python AST interpreter. Imports, attribute access, loops, classes and arbitrary function calls are rejected. This is not a complete OS sandbox. Keep the service local and require TUTEUR review before approving tools.
+The engine uses a restricted Python AST interpreter. Imports, attribute access, while loops, classes and arbitrary function calls are rejected. It supports bounded for loops, one-level list comprehensions and range() (up to 1,000 items), with a 5,000-step execution budget, a 20-level block-depth limit and 300 KB input/output limits. Nested list comprehensions are rejected. This is not a complete OS sandbox. Keep the service local and require TUTEUR review before approving tools.
 
 
 ## Autonomous evolution cycle with versioned tool catalog
