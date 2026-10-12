@@ -84,8 +84,8 @@ def _extract_text(payload):
 def _parse_review(text):
     cleaned = text.strip()
     if cleaned.startswith("```"):
-        cleaned = re.sub(r"^\`\`\`(?:json)?\\s*", "", cleaned)
-        cleaned = re.sub(r"\\s*\`\`\`$", "", cleaned)
+        cleaned = re.sub(r"^```(?:json)?\s*", "", cleaned)
+        cleaned = re.sub(r"\s*```$", "", cleaned)
     start, end = cleaned.find("{"), cleaned.rfind("}")
     if start < 0 or end <= start:
         raise ValueError("Le modèle vision n'a pas retourné un JSON valide.")
