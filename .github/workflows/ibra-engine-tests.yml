@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - n8n-python-engine
+      - visual-controller-termux
     paths:
       - 'n8n-engine/**'
       - '.github/workflows/ibra-engine-tests.yml'
