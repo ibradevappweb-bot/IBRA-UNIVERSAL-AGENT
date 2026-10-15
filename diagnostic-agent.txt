@@ -1,1 +1,0 @@
-Test de connexion entre IBRA UNIVERSAL AGENT et le nœud GitHub.
