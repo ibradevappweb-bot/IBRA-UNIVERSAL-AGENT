@@ -1,0 +1,25 @@
+# STRATEGIE DE PROSPECTION ET OPERATIONS - IBRA UNIVERSAL AGENT
+
+Contexte : Prospection et vente de paquets d'images haute qualité pour les restaurants à Conakry (Guinée).
+
+## 1. Objectifs
+- O Convertir les restaurants en clients actifs.
+- O Génirer des visuels professionnels (cinématographique, status 9/16) de haute qualité.
+- O Mettre en place un système de prospection automatisée.
+
+## 2. Processus de Vente &identifiré par : "Livraison conditionnelle"
+1. Approche gratuite (envoi d'une image de test).
+ 2. Identification de l'intÎret du restaurant.
+ 3. Envoi de l'offre (partie payante) avec le numéro de paiement local (Mobile Money).
+ 4. Validation manuelle de l'utilisateur (vous) après les paiements reçus.
+ 5. Libration du paquet entier (holte définition) via lien securisé.
+
+## 3. Règles d'Or 
+- Porte avec images professionnels (photoréaliste, cadrage 9/16).
+- Paiement local uniquement (Mobile Money). Pas de paiement en ligne intégré.
+- 12 restaurants déja dégos dans Supabase (statut : partially_verified).
+
+## 4. Prochaines étapes (à faire demains)
+- Préparar les modèles de messages (d'approche et de livraison ...).
+- Lancer la prospection sur les 12 fiches.
+- Préparer un exemple de visuel "professionnel" pour validation.
