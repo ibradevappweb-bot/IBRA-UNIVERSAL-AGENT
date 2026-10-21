@@ -84,7 +84,7 @@ def render(req: PosterRequest, x_api_key: Optional[str] = Header(default=None)):
     url = str(req.image_url)
     safe_public_url(url)
     try:
-        response = requests.get(url, timeout=(5, 25), stream=True,
+        response = requests.get(url, timeout=(5, 25), stream=True, allow_redirects=False,
                                 headers={"User-Agent":"IBRA-Poster-Studio/0.1"})
         response.raise_for_status()
         content = response.raw.read(15 * 1024 * 1024 + 1)
@@ -102,13 +102,15 @@ def render(req: PosterRequest, x_api_key: Optional[str] = Header(default=None)):
     src = src.crop((left,top,left+side,top+side)).resize((SIZE,SIZE), Image.Resampling.LANCZOS)
     canvas = src.convert("RGBA")
     # Dark bottom gradient provides reliable contrast for typography.
-    overlay = Image.new("RGBA", (SIZE,SIZE), (0,0,0,0))
+    overlay = Image.new("RGBA", (1, SIZE-650), (7, 9, 13, 0))
     pix = overlay.load()
-    for y in range(650, SIZE):
-        alpha = int(205 * ((y-650)/(SIZE-650))**0.8)
-        for x in range(SIZE):
-            pix[x,y] = (7, 9, 13, alpha)
-    canvas = Image.alpha_composite(canvas, overlay)
+    for y in range(SIZE-650):
+        alpha = int(205 * (y/(SIZE-650))**0.8)
+        pix[0,y] = (7, 9, 13, alpha)
+    overlay = overlay.resize((SIZE, SIZE-650))
+    full_overlay = Image.new("RGBA", (SIZE,SIZE), (0,0,0,0))
+    full_overlay.paste(overlay, (0,650))
+    canvas = Image.alpha_composite(canvas, full_overlay)
     draw = ImageDraw.Draw(canvas)
     accent = hex_rgb(req.accent_color, {"restaurant":(228,151,63),"fashion":(239,239,232),"luxury":(207,177,111),"general":(255,194,66)}[req.category])
     margin = 112
