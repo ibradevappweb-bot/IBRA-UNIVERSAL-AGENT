@@ -3,7 +3,7 @@ from urllib.parse import urlparse
 from pathlib import Path
 from typing import Optional
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Header
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, HttpUrl
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
@@ -13,6 +13,7 @@ OUT = Path(os.getenv("POSTER_OUTPUT_DIR", "/tmp/ibra-posters"))
 OUT.mkdir(parents=True, exist_ok=True)
 BASE_URL = os.getenv("PUBLIC_BASE_URL", "").rstrip("/")
 API_KEY = os.getenv("POSTER_API_KEY", "")
+ALLOWED_HOST = os.getenv("SOURCE_IMAGE_HOST", "ibra-image-gateway.ibradevappweb.workers.dev")
 SIZE = 1920
 app = FastAPI(title=APP_NAME, version="0.1.0")
 app.mount("/posters", StaticFiles(directory=str(OUT)), name="posters")
@@ -32,16 +33,8 @@ class PosterRequest(BaseModel):
 
 def safe_public_url(url: str):
     p = urlparse(url)
-    if p.scheme not in ("http", "https") or not p.hostname:
-        raise HTTPException(400, "image_url doit être une URL HTTP(S) publique")
-    try:
-        infos = socket.getaddrinfo(p.hostname, None)
-        for info in infos:
-            ip = ipaddress.ip_address(info[4][0])
-            if not ip.is_global:
-                raise HTTPException(400, "Adresse image privée ou locale refusée")
-    except socket.gaierror:
-        raise HTTPException(400, "Nom de domaine de l'image inaccessible")
+    if p.scheme != "https" or p.hostname != ALLOWED_HOST or not p.path.startswith("/image/"):
+        raise HTTPException(400, "image_url doit provenir de la passerelle image IBRA autorisée")
 
 def load_font(size, bold=False):
     paths = (["/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -84,9 +77,9 @@ def health():
     return {"ok": True, "service": "ibra-poster-studio", "version": "0.1.0", "output": "1920x1920 PNG"}
 
 @app.post("/render")
-def render(req: PosterRequest):
+def render(req: PosterRequest, x_api_key: Optional[str] = Header(default=None)):
     started = time.time()
-    if API_KEY and req_header_key() != API_KEY:
+    if API_KEY and x_api_key != API_KEY:
         raise HTTPException(401, "Clé API invalide")
     url = str(req.image_url)
     safe_public_url(url)
@@ -163,13 +156,3 @@ def render(req: PosterRequest):
     return {"success":True,"image_url":f"{base}/posters/{filename}","width":SIZE,"height":SIZE,
             "format":"image/png","render_ms":round((time.time()-started)*1000),"file":filename}
 
-def req_header_key():
-    # API key is checked through a dependency-free header helper.
-    from fastapi import Request
-    # Header extraction is handled by middleware below.
-    return getattr(app.state, "current_api_key", "")
-    
-@app.middleware("http")
-async def capture_api_key(request, call_next):
-    app.state.current_api_key = request.headers.get("x-api-key", "")
-    return await call_next(request)
