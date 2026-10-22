@@ -4,9 +4,13 @@
 
     <application
         android:allowBackup="true"
+        android:usesCleartextTraffic="true"
         android:label="IBRA UNIVERSAL AGENT"
         android:supportsRtl="true"
         android:theme="@style/Theme.IbraUniversalAgent">
+        <activity
+            android:name=".IbraChatActivity"
+            android:exported="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true">

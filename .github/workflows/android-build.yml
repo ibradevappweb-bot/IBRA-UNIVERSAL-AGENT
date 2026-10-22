@@ -2,6 +2,8 @@ name: Android Build
 
 on:
   push:
+    branches: [ main, "feature/ibra-voice-n8n" ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 
