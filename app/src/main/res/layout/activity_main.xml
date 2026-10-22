@@ -1,10 +1,78 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:padding="24dp">
-<TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="IBRA UNIVERSAL AGENT" android:textSize="24sp" android:textStyle="bold" />
-<TextView android:id="@+id/status" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/agent_ready" android:textSize="16sp" />
-<ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:layout_marginTop="20dp"><TextView android:id="@+id/conversation" android:layout_width="match_parent" android:layout_height="wrap_content" android:textSize="17sp" /></ScrollView>
-<EditText android:id="@+id/textInput" android:layout_width="match_parent" android:layout_height="wrap_content" android:hint="@string/hint" android:inputType="textCapSentences" android:minHeight="56dp" />
-<LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="12dp">
-<Button android:id="@+id/sendButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Envoyer" />
-<Button android:id="@+id/listenButton" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="8dp" android:text="@string/listen" />
-</LinearLayout></LinearLayout>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#FFFFFF"
+    android:padding="16dp">
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="IBRA"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#202123" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="@string/agent_ready"
+        android:textSize="13sp"
+        android:textColor="#6B7280" />
+
+    <ScrollView
+        android:id="@+id/conversationScroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:layout_marginTop="12dp">
+
+        <LinearLayout
+            android:id="@+id/messagesContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+    </ScrollView>
+
+    <Button
+        android:id="@+id/voiceModeButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Mode vocal : désactivé" />
+
+    <EditText
+        android:id="@+id/textInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/hint"
+        android:inputType="textCapSentences|textMultiLine"
+        android:minHeight="56dp"
+        android:maxLines="5" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginTop="6dp">
+
+        <Button
+            android:id="@+id/sendButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Envoyer" />
+
+        <Button
+            android:id="@+id/listenButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="🎙 Parler" />
+    </LinearLayout>
+</LinearLayout>
