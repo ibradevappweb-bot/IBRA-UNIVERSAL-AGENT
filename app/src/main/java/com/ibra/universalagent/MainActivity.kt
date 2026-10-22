@@ -1,14 +1,11 @@
 package com.ibra.universalagent
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.text.InputType
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
-import android.widget.EditText
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -19,44 +16,39 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var binding: ActivityMainBinding
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var textToSpeech: TextToSpeech
-    private lateinit var geminiChatEngine: GeminiChatEngine
-
-    private val agentCore by lazy {
-        AgentCore(
-            brainEngine = BrainEngine(),
-            plannerEngine = PlannerEngine(),
-            actionEngine = ActionEngine(AndroidActionExecutor(this)),
-            observationEngine = ObservationEngine(),
-            verificationEngine = VerificationEngine(),
-            correctionEngine = CorrectionEngine()
-        )
-    }
+    private lateinit var n8nChatEngine: N8nChatEngine
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        geminiChatEngine = GeminiChatEngine(this)
+
+        n8nChatEngine = N8nChatEngine(this)
         textToSpeech = TextToSpeech(this, this)
         setupVoice()
         binding.sendButton.setOnClickListener { submit(binding.textInput.text.toString()) }
         binding.listenButton.setOnClickListener { startListening() }
+        binding.status.text = "Prêt — IBRA n8n"
     }
 
     private fun setupVoice() {
         if (!SpeechRecognizer.isRecognitionAvailable(this)) {
-            binding.status.text = "Reconnaissance vocale indisponible"
+            binding.status.text = "Reconnaissance vocale indisponible sur cet appareil"
             return
         }
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
         speechRecognizer.setRecognitionListener(VoiceController(
-            onReady = { binding.status.text = "J'écoute…" },
-            onResult = { text -> binding.textInput.setText(text); submit(text) },
-            onError = { binding.status.text = it }
+            onReady = { runOnUiThread { binding.status.text = "J'écoute… parle à IBRA" } },
+            onResult = { text -> runOnUiThread { binding.textInput.setText(text); submit(text) } },
+            onError = { message -> runOnUiThread { binding.status.text = message } }
         ))
     }
 
     private fun startListening() {
+        if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+            binding.status.text = "Reconnaissance vocale indisponible"
+            return
+        }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1001)
             return
@@ -74,50 +66,37 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         if (clean.isEmpty()) return
         binding.conversation.append("\n\nVous : $clean")
         binding.textInput.text?.clear()
-
-        val decision = BrainEngine().understand(clean)
-        if (decision.taskType == TaskType.CHAT) {
-            if (!geminiChatEngine.hasApiKey()) showGeminiKeyDialog(clean) else askGemini(clean)
-            return
-        }
-
-        showResponse(agentCore.process(clean).message)
-    }
-
-    private fun askGemini(request: String) {
+        binding.sendButton.isEnabled = false
+        binding.listenButton.isEnabled = false
         binding.status.text = "IBRA réfléchit…"
-        geminiChatEngine.ask(request) { answer -> runOnUiThread { showResponse(answer) } }
-    }
-
-    private fun showResponse(message: String) {
-        binding.conversation.append("\nIBRA : $message")
-        textToSpeech.speak(message, TextToSpeech.QUEUE_FLUSH, null, "ibra-response")
-        binding.status.text = "Prêt"
-    }
-
-    private fun showGeminiKeyDialog(request: String) {
-        val input = EditText(this).apply {
-            hint = "Colle ta clé API Gemini"
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+        n8nChatEngine.ask(clean) { answer ->
+            runOnUiThread {
+                binding.conversation.append("\nIBRA : $answer")
+                binding.sendButton.isEnabled = true
+                binding.listenButton.isEnabled = true
+                binding.status.text = "Prêt"
+                if (::textToSpeech.isInitialized) {
+                    textToSpeech.speak(answer, TextToSpeech.QUEUE_FLUSH, null, "ibra-response")
+                }
+            }
         }
-        AlertDialog.Builder(this)
-            .setTitle("Activer le cerveau IA d'IBRA")
-            .setMessage("IBRA a besoin d'une clé API Gemini pour répondre aux questions normales. Elle reste enregistrée sur ce téléphone.")
-            .setView(input)
-            .setNegativeButton("Plus tard", null)
-            .setPositiveButton("Enregistrer") { _, _ ->
-                val key = input.text.toString().trim()
-                if (key.isNotEmpty()) { geminiChatEngine.saveApiKey(key); askGemini(request) }
-            }.show()
     }
 
     override fun onInit(status: Int) {
-        if (status == TextToSpeech.SUCCESS) textToSpeech.language = Locale.FRENCH
+        if (status == TextToSpeech.SUCCESS) {
+            val result = textToSpeech.setLanguage(Locale.FRANCE)
+            if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+                binding.status.text = "Voix française non disponible dans les voix installées"
+            }
+        }
     }
 
     override fun onDestroy() {
         if (::speechRecognizer.isInitialized) speechRecognizer.destroy()
-        if (::textToSpeech.isInitialized) { textToSpeech.stop(); textToSpeech.shutdown() }
+        if (::textToSpeech.isInitialized) {
+            textToSpeech.stop()
+            textToSpeech.shutdown()
+        }
         super.onDestroy()
     }
 }
